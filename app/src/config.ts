@@ -2,7 +2,7 @@
 // After you push this project to GitHub and the "Update crime data" workflow has run,
 // replace YOUR_GITHUB_USERNAME below with your GitHub username (README, step 3).
 // (Optional: you can override it with EXPO_PUBLIC_DATA_URL in app/.env.)
-const DEFAULT_DATA_URL = 'https://YOUR_GITHUB_USERNAME.github.io/SafeHop/data/v1';
+const DEFAULT_DATA_URL = 'https://ertugrulozvardar.github.io/SafeHop/data/v1';
 
 export const DATA_URL = (process.env.EXPO_PUBLIC_DATA_URL || DEFAULT_DATA_URL).replace(/\/+$/, '');
 export const DATA_URL_CONFIGURED = !DATA_URL.includes('YOUR_GITHUB_USERNAME');
