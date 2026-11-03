@@ -2,7 +2,7 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
 
 // Change this before your first store build if you prefer another identifier.
 // It must be unique on the App Store and Google Play and can't be changed after publishing.
-const BUNDLE_ID = process.env.SAFEHOP_BUNDLE_ID ?? 'com.rigrelief.safehop';
+const BUNDLE_ID = process.env.SAFEHOP_BUNDLE_ID ?? 'com.ertugrulozvardar.safehop';
 
 // Paste the ID that `eas init` prints here (README, step 4).
 const EAS_PROJECT_ID = '';
@@ -17,7 +17,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   icon: './assets/icon.png',
   userInterfaceStyle: 'light',
   ios: {
-    supportsTablet: true,
+    supportsTablet: false,
     bundleIdentifier: BUNDLE_ID,
     config: { usesNonExemptEncryption: false },
   },

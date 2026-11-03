@@ -90,11 +90,11 @@ npx eas-cli@latest init
 
 `init` bir **project ID** yazdıracak; onu `app/app.config.ts` içindeki `EAS_PROJECT_ID = ''` satırına yapıştır.
 
-**Paket adı:** `com.rigrelief.safehop` olarak ayarlı (`app/app.config.ts` → `BUNDLE_ID`). Mağazaya ilk yüklemeden önce değiştirebilirsin; sonra değiştirilemez.
+**Paket adı:** `com.ertugrulozvardar.safehop` olarak ayarlı (`app/app.config.ts` → `BUNDLE_ID`). Mağazaya ilk yüklemeden önce değiştirebilirsin; sonra değiştirilemez.
 
 ### iOS (App Store)
 
-1. App Store Connect → **Apps → +** → yeni uygulama; Bundle ID: `com.rigrelief.safehop`.
+1. App Store Connect → **Apps → +** → yeni uygulama; Bundle ID: `com.ertugrulozvardar.safehop`.
 2. Derle ve gönder:
    ```bash
    npx eas-cli@latest build -p ios --profile production
@@ -112,7 +112,7 @@ npx eas-cli@latest init
    - **Kurumsal hesap** (D-U-N-S numarası gerekir): bu şart yok.
 2. **Google Maps anahtarı** (Android'de harita için şart):
    - Google Cloud Console → yeni proje → **"Maps SDK for Android"**'i etkinleştir → **Credentials → API key** oluştur.
-   - Anahtarı kısıtla: *Android apps* → paket adı `com.rigrelief.safehop` + SHA-1 parmak izleri. SHA-1'leri `npx eas-cli@latest credentials -p android` ve Play Console → *App integrity* sayfasından alırsın.
+   - Anahtarı kısıtla: *Android apps* → paket adı `com.ertugrulozvardar.safehop` + SHA-1 parmak izleri. SHA-1'leri `npx eas-cli@latest credentials -p android` ve Play Console → *App integrity* sayfasından alırsın.
    - Anahtarı EAS'e ekle:
      ```bash
      npx eas-cli@latest env:create --name GOOGLE_MAPS_ANDROID_API_KEY --value ANAHTARIN --environment production --environment preview --visibility sensitive
