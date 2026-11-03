@@ -1,0 +1,5 @@
+node_modules/
+.DS_Store
+
+# Output of data-pipeline/build.mjs (published by GitHub Actions, not committed)
+site/

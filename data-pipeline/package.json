@@ -1,0 +1,15 @@
+{
+  "name": "safehop-data-pipeline",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Builds 6-month neighborhood crime summaries for SafeHop from official US open-data portals.",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "snapshot": "node build.mjs --app-snapshot",
+    "test": "node --test test/*.test.mjs"
+  }
+}

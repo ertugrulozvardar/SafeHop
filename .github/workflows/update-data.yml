@@ -1,0 +1,65 @@
+name: Update crime data
+
+# Builds the 6-month neighborhood summaries for all cities and publishes them
+# (plus docs/*.html, e.g. the privacy policy) to GitHub Pages.
+on:
+  schedule:
+    - cron: '23 9 * * *' # every day at 09:23 UTC
+  workflow_dispatch: # "Run workflow" button in the Actions tab
+  push:
+    branches: [main]
+    paths:
+      - 'data-pipeline/**'
+      - 'docs/**'
+      - '.github/workflows/update-data.yml'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Unit tests
+        working-directory: data-pipeline
+        run: npm test
+
+      - name: Build data
+        working-directory: data-pipeline
+        env:
+          # Optional: create a free Socrata app token and add it as a repository secret
+          # (Settings → Secrets and variables → Actions) to avoid API rate limits.
+          SOCRATA_APP_TOKEN: ${{ secrets.SOCRATA_APP_TOKEN }}
+          # If one city's API is down, keep that city's last published data instead of failing.
+          SAFEHOP_PREVIOUS_BASE: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/data/v1
+        run: node build.mjs --out ../site/data/v1
+
+      - name: Add static pages
+        run: cp docs/*.html site/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
