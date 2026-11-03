@@ -4,13 +4,15 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
 // It must be unique on the App Store and Google Play and can't be changed after publishing.
 const BUNDLE_ID = process.env.SAFEHOP_BUNDLE_ID ?? 'com.ertugrulozvardar.safehop';
 
-// Paste the ID that `eas init` prints here (README, step 4).
-const EAS_PROJECT_ID = '';
+// EAS project: https://expo.dev/accounts/ozvardar.ertugrul/projects/safehop
+const EAS_OWNER = 'ozvardar.ertugrul';
+const EAS_PROJECT_ID = '341108a8-22ba-446f-b725-0d2c6a355162';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'SafeHop',
   slug: 'safehop',
+  owner: EAS_OWNER,
   scheme: 'safehop',
   version: '1.0.0',
   orientation: 'portrait',

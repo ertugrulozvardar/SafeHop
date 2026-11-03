@@ -41,6 +41,9 @@ export default function CityScreen() {
   const [filter, setFilter] = useState<CategoryFilter>('all');
   const [selected, setSelected] = useState<string | null>(null);
   const [noteDismissed, setNoteDismissed] = useState(false);
+  // Height of the legend card, so the map's logo/"Legal" link (Apple Maps / Google)
+  // is laid out above it instead of being covered — required by the map providers.
+  const [legendHeight, setLegendHeight] = useState(90);
 
   const load = useCallback(() => {
     setState({ status: 'loading' });
@@ -101,7 +104,14 @@ export default function CityScreen() {
           ),
         }}
       />
-      <MapView style={styles.flex} initialRegion={region} toolbarEnabled={false} pitchEnabled={false} rotateEnabled={false}>
+      <MapView
+        style={styles.flex}
+        initialRegion={region}
+        mapPadding={{ top: 0, right: 0, bottom: legendHeight + insets.bottom + 16, left: 0 }}
+        toolbarEnabled={false}
+        pitchEnabled={false}
+        rotateEnabled={false}
+      >
         {shapes.map((s) => {
           const m = metrics?.byKey.get(s.key);
           const lc = levelColors[m?.level ?? 'none'];
@@ -143,7 +153,14 @@ export default function CityScreen() {
           bottomInset={insets.bottom}
         />
       ) : (
-        <View style={[styles.bottomOverlay, { bottom: insets.bottom + 12 }]} pointerEvents="box-none">
+        <View
+          style={[styles.bottomOverlay, { bottom: insets.bottom + 12 }]}
+          pointerEvents="box-none"
+          onLayout={(e) => {
+            const h = Math.round(e.nativeEvent.layout.height);
+            if (Math.abs(h - legendHeight) > 2) setLegendHeight(h);
+          }}
+        >
           <Legend
             caption={`${CATEGORY_META[filter].label} per km², compared with other areas in ${data.name} · ${formatRange(data.window.start, data.window.end)}${state.origin === 'offline-copy' ? ' (offline copy)' : ''}. Tap an area for details.`}
           />
