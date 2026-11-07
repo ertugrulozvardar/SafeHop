@@ -17,6 +17,7 @@ export default function RootLayout() {
       >
         <Stack.Screen name="index" options={{ title: 'SafeHop' }} />
         <Stack.Screen name="city/[id]" options={{ title: '' }} />
+        <Stack.Screen name="route/[id]" options={{ title: 'Safest route' }} />
         <Stack.Screen name="about" options={{ title: 'About the data' }} />
       </Stack>
     </>

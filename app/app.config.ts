@@ -14,7 +14,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: 'safehop',
   owner: EAS_OWNER,
   scheme: 'safehop',
-  version: '1.0.0',
+  version: '1.1.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'light',

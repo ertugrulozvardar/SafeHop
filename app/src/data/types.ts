@@ -74,4 +74,6 @@ export interface DataIndex {
   generatedAt: string;
   categories: CategoryId[];
   cities: CityIndexEntry[];
+  /** Optional endpoints for the route planner (see data-pipeline/build.mjs). */
+  services?: { routing?: string; geocoding?: string };
 }

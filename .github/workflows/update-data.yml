@@ -45,6 +45,10 @@ jobs:
           SOCRATA_APP_TOKEN: ${{ secrets.SOCRATA_APP_TOKEN }}
           # If one city's API is down, keep that city's last published data instead of failing.
           SAFEHOP_PREVIOUS_BASE: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/data/v1
+          # Optional: route planner endpoints served to the app via index.json (defaults are in build.mjs).
+          # Set as repository secrets if the URL contains an API key.
+          SAFEHOP_ROUTING_URL: ${{ secrets.SAFEHOP_ROUTING_URL }}
+          SAFEHOP_GEOCODING_URL: ${{ secrets.SAFEHOP_GEOCODING_URL }}
         run: node build.mjs --out ../site/data/v1
 
       - name: Add static pages

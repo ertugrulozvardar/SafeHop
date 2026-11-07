@@ -10,6 +10,17 @@ export const DATA_URL_CONFIGURED = !DATA_URL.includes('YOUR_GITHUB_USERNAME');
 // Privacy policy page (published by the same workflow from docs/privacy.html).
 export const PRIVACY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL || DATA_URL.replace(/\/data\/v1$/, '/privacy.html');
 
+// ─── 2) Route planner services ───────────────────────────────────────────────
+// Full endpoint URLs of a Valhalla-compatible routing API and a Photon-compatible place search API.
+// The published index.json can override these ("services"), so the provider can be switched without an
+// app update. The free community servers below ask for light use (routing: max 1 request per second).
+export const DEFAULT_ROUTING_URL = process.env.EXPO_PUBLIC_ROUTING_URL || 'https://valhalla1.openstreetmap.de/route';
+export const DEFAULT_GEOCODING_URL = process.env.EXPO_PUBLIC_GEOCODING_URL || 'https://photon.komoot.io/api/';
+export const SERVICE_OVERRIDE = Boolean(process.env.EXPO_PUBLIC_ROUTING_URL || process.env.EXPO_PUBLIC_GEOCODING_URL);
+
+// Identifies the app to the routing / search servers, as their usage policies require.
+export const USER_AGENT = 'SafeHop/1.1 (+https://ertugrulozvardar.github.io/SafeHop/)';
+
 // Cities the app knows about, in display order. Data for each comes from the pipeline.
 export const CITY_LIST: { id: string; name: string; state: string; tagline: string }[] = [
   { id: 'chicago', name: 'Chicago', state: 'IL', tagline: '77 community areas' },

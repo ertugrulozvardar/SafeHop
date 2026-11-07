@@ -53,6 +53,25 @@ export default function AboutScreen() {
         <P>Shoplifting, fraud, drug offenses and traffic violations are not counted.</P>
       </Section>
 
+      <Section title="Safest route">
+        <P>
+          “Safe route” on a city map lets you choose a start and a destination. SafeHop then gets a few realistic walking or
+          driving routes, including detours through areas with less reported crime, and compares them by the reported crime
+          of the areas each route passes through (weighted by the distance travelled in each area). It shows the safest and
+          the least safe of these routes, with the total travel time of each.
+        </P>
+        <Bullet>“Safest” and “least safe” only compare these routes with each other, based on crimes reported to police. They are not a guarantee of safety.</Bullet>
+        <Bullet>The data is per area (neighborhood, precinct or police division), so SafeHop can’t tell two streets in the same area apart.</Bullet>
+        <Bullet>Directions don’t account for traffic, closures or construction. Follow local signs and your own judgment.</Bullet>
+        <P>
+          Routes and place search use OpenStreetMap data (© OpenStreetMap contributors, ODbL) via the community-run
+          Valhalla routing service of FOSSGIS e.V. and the Photon search service by komoot.
+        </P>
+        <Pressable onPress={() => Linking.openURL('https://www.openstreetmap.org/copyright')} accessibilityRole="link">
+          <Text style={styles.link}>OpenStreetMap copyright and license</Text>
+        </Pressable>
+      </Section>
+
       <Section title="Data sources">
         <P>All data comes from official open-data portals and is refreshed daily when new data is published.</P>
         {SOURCES.map((s) => (
@@ -66,6 +85,10 @@ export default function AboutScreen() {
 
       <Section title="Privacy">
         <P>SafeHop does not collect personal data, does not use your location and has no accounts or ads.</P>
+        <P>
+          When you compare routes, the points you choose and the text you type in the search box are sent to the routing and
+          place-search services only to calculate the result. SafeHop doesn’t store them.
+        </P>
         <Pressable onPress={() => Linking.openURL(PRIVACY_URL)} accessibilityRole="link">
           <Text style={styles.link}>Privacy policy</Text>
         </Pressable>

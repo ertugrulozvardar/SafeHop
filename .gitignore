@@ -3,3 +3,6 @@ node_modules/
 
 # Output of data-pipeline/build.mjs (published by GitHub Actions, not committed)
 site/
+
+# Large marketing videos (kept locally, not in git)
+marketing/reels/

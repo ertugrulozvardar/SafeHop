@@ -146,6 +146,10 @@ cd app && npm run typecheck           # TypeScript kontrolü
 - **Miami** verisi resmi katalogda listelenmeyen ama herkese açık bir ArcGIS servisinden geliyor; adres değişirse aynı dosyada güncellenir.
 - Workflow başarısız olursa GitHub e-posta ile haber verir. Son başarılı veri yayında kalmaya devam eder.
 
+**Rota karşılaştırma (v2):** Şehir haritasında sağ üstteki **Routes** butonu. İki nokta seçilince (arama ya da haritaya dokunma) yürüyüş/araba rotaları alınır ve geçtikleri bölgelerdeki bildirilen olaylara göre karşılaştırılır (`app/src/data/routing.ts`, `app/src/lib/routeScore.ts`).
+- Rota servisi: FOSSGIS'in ücretsiz Valhalla sunucusu (`valhalla1.openstreetmap.de`, en fazla 1 istek/sn). Yer arama: komoot'un ücretsiz Photon servisi (`photon.komoot.io`). İkisi de OpenStreetMap verisi kullanır, uygulamada atıf var.
+- Adresler `site/data/v1/index.json` içindeki `services` alanından okunur, yani kullanım büyürse uygulamayı güncellemeden başka bir sağlayıcıya geçilebilir: GitHub → Settings → Secrets and variables → Actions'a `SAFEHOP_ROUTING_URL` / `SAFEHOP_GEOCODING_URL` secret'larını eklemek yeterli (workflow bunları okuyor) (Valhalla ve Photon uyumlu herhangi bir servis, ör. Stadia Maps ya da kendi sunucun). Test için `app/.env` içinde `EXPO_PUBLIC_ROUTING_URL` / `EXPO_PUBLIC_GEOCODING_URL` da kullanılabilir.
+
 **Yeni şehir eklemek:** `pipeline.mjs` → `CITIES` listesine kaynak API'yi, tarih alanını, mahalle sınırı katmanını ve kategori eşlemesini ekle. Ardından `app/src/config.ts` → `CITY_LIST`'e şehri ekle.
 
 **Önemli:** Uygulama bir güvenlik garantisi değil, bilgilendirme aracıdır. Renkler sadece aynı şehirdeki bölgeleri birbiriyle karşılaştırır. Kalabalık bölgelerde (downtown, gece hayatı) daha çok insan olduğu için daha çok olay bildirilir. Uygulama içindeki "About" ekranı bunları kullanıcıya açıklıyor.

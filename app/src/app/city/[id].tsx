@@ -1,7 +1,7 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import MapView, { type LatLng, Polygon } from 'react-native-maps';
+import MapView, { Polygon } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AreaSheet } from '../../components/AreaSheet';
 import { CategoryChips } from '../../components/CategoryChips';
@@ -9,25 +9,9 @@ import { Legend } from '../../components/Legend';
 import { type DataOrigin, loadCity } from '../../data/api';
 import { CATEGORY_META } from '../../data/categories';
 import type { AreaCollection, CategoryFilter, CityData } from '../../data/types';
+import { regionForBbox, toShapes } from '../../lib/shapes';
 import { computeMetrics, formatRange } from '../../lib/stats';
 import { colors, levelColors, radius } from '../../theme';
-
-interface Shape {
-  key: string;
-  polys: { outer: LatLng[]; holes: LatLng[][] }[];
-}
-
-const toLatLng = (ring: [number, number][]): LatLng[] => ring.map(([lng, lat]) => ({ latitude: lat, longitude: lng }));
-
-function toShapes(areas: AreaCollection): Shape[] {
-  return areas.features.map((f) => {
-    const polygons = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
-    return {
-      key: f.properties.key,
-      polys: polygons.map((rings) => ({ outer: toLatLng(rings[0]), holes: rings.slice(1).map(toLatLng) })),
-    };
-  });
-}
 
 type State =
   | { status: 'loading' }
@@ -45,14 +29,22 @@ export default function CityScreen() {
   // is laid out above it instead of being covered — required by the map providers.
   const [legendHeight, setLegendHeight] = useState(90);
 
-  const load = useCallback(() => {
-    setState({ status: 'loading' });
-    loadCity(String(id))
-      .then(({ data, areas, origin }) => setState({ status: 'ready', data, areas, origin }))
-      .catch((err: Error) => setState({ status: 'error', message: err.message }));
-  }, [id]);
+  const [attempt, setAttempt] = useState(0);
 
-  useEffect(load, [load]);
+  useEffect(() => {
+    let alive = true;
+    loadCity(String(id))
+      .then(({ data, areas, origin }) => alive && setState({ status: 'ready', data, areas, origin }))
+      .catch((err: Error) => alive && setState({ status: 'error', message: err.message }));
+    return () => {
+      alive = false;
+    };
+  }, [id, attempt]);
+
+  const load = () => {
+    setState({ status: 'loading' });
+    setAttempt((n) => n + 1);
+  };
 
   const shapes = useMemo(() => (state.status === 'ready' ? toShapes(state.areas) : []), [state]);
   const metrics = useMemo(() => (state.status === 'ready' ? computeMetrics(state.data, filter) : null), [state, filter]);
@@ -81,13 +73,7 @@ export default function CityScreen() {
   }
 
   const { data } = state;
-  const [minLng, minLat, maxLng, maxLat] = data.bbox;
-  const region = {
-    latitude: (minLat + maxLat) / 2,
-    longitude: (minLng + maxLng) / 2,
-    latitudeDelta: (maxLat - minLat) * 1.2,
-    longitudeDelta: (maxLng - minLng) * 1.2,
-  };
+  const region = regionForBbox(data.bbox);
   const selectedArea = selected ? data.areas.find((a) => a.key === selected) : undefined;
   const selectedMetric = selected && metrics ? metrics.byKey.get(selected) : undefined;
   const banner = data.stale ? data.staleReason : data.notes[0];
@@ -161,6 +147,16 @@ export default function CityScreen() {
             if (Math.abs(h - legendHeight) > 2) setLegendHeight(h);
           }}
         >
+          {/* Inside the measured overlay, so the map keeps its logo and "Legal" link above the button too. */}
+          <Pressable
+            onPress={() => router.push({ pathname: '/route/[id]', params: { id: data.id, filter } })}
+            style={({ pressed }) => [styles.routeButton, pressed && styles.routeButtonPressed]}
+            accessibilityRole="button"
+            accessibilityLabel={`Find a safe route in ${data.name}`}
+          >
+            <Text style={styles.routeButtonIcon}>➜</Text>
+            <Text style={styles.routeButtonText}>Find a safe route</Text>
+          </Pressable>
           <Legend
             caption={`${CATEGORY_META[filter].label} per km², compared with other areas in ${data.name} · ${formatRange(data.window.start, data.window.end)}${state.origin === 'offline-copy' ? ' (offline copy)' : ''}. Tap an area for details.`}
           />
@@ -178,6 +174,25 @@ const styles = StyleSheet.create({
   button: { marginTop: 8, backgroundColor: colors.brand, paddingHorizontal: 20, paddingVertical: 12, borderRadius: radius.pill },
   buttonText: { color: '#fff', fontWeight: '700' },
   headerLink: { color: colors.brand, fontSize: 16, fontWeight: '600' },
+  routeButton: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+    backgroundColor: colors.brand,
+    borderRadius: radius.pill,
+    paddingHorizontal: 22,
+    paddingVertical: 13,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  routeButtonPressed: { opacity: 0.8, transform: [{ scale: 0.98 }] },
+  routeButtonIcon: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  routeButtonText: { color: '#fff', fontSize: 16, fontWeight: '800' },
   topOverlay: { position: 'absolute', top: 10, left: 0, right: 0, gap: 8 },
   banner: {
     marginHorizontal: 12,

@@ -48,7 +48,18 @@ async function main() {
   await mkdir(args.out, { recursive: true });
   const ctx = { log: (m) => console.log(m), socrataAppToken: process.env.SOCRATA_APP_TOKEN, now: new Date() };
 
-  const index = { version: 1, generatedAt: ctx.now.toISOString(), categories: CATEGORIES, cities: [] };
+  const index = {
+    version: 1,
+    generatedAt: ctx.now.toISOString(),
+    categories: CATEGORIES,
+    cities: [],
+    // Endpoints the app's route planner uses. Served from here so they can be switched (e.g. to a paid
+    // provider or a self-hosted server) without shipping an app update.
+    services: {
+      routing: process.env.SAFEHOP_ROUTING_URL || 'https://valhalla1.openstreetmap.de/route',
+      geocoding: process.env.SAFEHOP_GEOCODING_URL || 'https://photon.komoot.io/api/',
+    },
+  };
   const results = {};
   const failed = [];
 
