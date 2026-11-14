@@ -356,7 +356,8 @@ export function summarizeRent(weights, rents) {
  * Builds `{city}.costs.json`. Expensive downloads only happen when the source has a newer edition than the
  * previously published file (Inside Airbnb is checked at most weekly, HUD once per fiscal year).
  *
- * io = { fetchText(url), fetchBytes(url), fetchJson(url), inflateRaw(bytes), log(msg), cache: Map }
+ * io = { fetchText(url), fetchBytes(url), fetchJson(url), inflateRaw(bytes), log(msg), cache: Map,
+ *        staticRents?: { fy, rents: Map } }  ← a committed copy of the HUD table, used if huduser.gov is unreachable
  */
 export async function buildCosts({ cityId, geojson, previous, now, io }) {
   const log = (m) => io.log(`[${cityId}] costs: ${m}`);
@@ -417,7 +418,10 @@ export async function buildCosts({ cityId, geojson, previous, now, io }) {
               .fetchBytes(hudSafmrUrl(candidate))
               .then((b) => parseXlsx(b, io.inflateRaw))
               .then(rentByZip)
-              .catch(() => null)
+              .catch((err) => {
+                io.log(`HUD FY${candidate} download failed: ${err.message}`);
+                return null;
+              })
           );
         }
         rents = await io.cache.get(key);
@@ -425,6 +429,12 @@ export async function buildCosts({ cityId, geojson, previous, now, io }) {
           fy = candidate;
           break;
         }
+      }
+      const source = 'HUD Small Area Fair Market Rents';
+      if (!fy && io.staticRents && (!prev || io.staticRents.fy > prev.fy)) {
+        fy = io.staticRents.fy;
+        rents = io.staticRents.rents;
+        log(`rent: using the committed FY${fy} copy`);
       }
       if (!fy) {
         out.rent = prev ?? null;
@@ -434,7 +444,7 @@ export async function buildCosts({ cityId, geojson, previous, now, io }) {
         const weights = zipWeights(geojson, zipFeatures);
         const areas = summarizeRent(weights, rents);
         out.rent = {
-          source: 'HUD Small Area Fair Market Rents',
+          source,
           url: 'https://www.huduser.gov/portal/datasets/fmr/smallarea/index.html',
           fy,
           areas,

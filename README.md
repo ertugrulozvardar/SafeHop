@@ -154,6 +154,7 @@ cd app && npm run typecheck           # TypeScript kontrolü
 - **Stay:** Inside Airbnb'nin `listings.csv` dosyasından (CC BY 4.0), son 12 ayda rezervasyon almış ve en fazla 30 gecelik konaklamaya izin veren ilanların bölge bazında medyan gecelik fiyatı. Inside Airbnb yaklaşık 3 ayda bir yeni veri yayınlar; workflow haftada bir kontrol eder, sadece yeni veri çıkınca indirir. Miami için veri yok.
 - **Rent:** HUD Small Area Fair Market Rents (posta kodu bazında, stüdyo–3+1), her bölgenin kapsadığı posta kodlarına göre ağırlıklı ortalama. HUD dosyası yılda bir (Ekim) yenilenir; workflow yeni mali yılın dosyası çıkınca otomatik alır.
 - Bir kaynak hata verirse önceki yayındaki veri korunur, build başarısız olmaz. Actions loglarında `costs:` satırlarından takip edilebilir.
+- huduser.gov GitHub sunucularından indirmeye izin vermiyor; bu yüzden HUD tablosunun şehirlerimize ait kısmı `data-pipeline/static/hud-safmr-fy2027.json` olarak repoda duruyor ve indirme başarısız olunca o kullanılıyor. Her Ekim HUD yeni yılın dosyasını yayınlayınca bu kopyanın yenilenmesi gerekir (yeni şehir eklenince de).
 
 **Yeni şehir eklemek:** `pipeline.mjs` → `CITIES` listesine kaynak API'yi, tarih alanını, mahalle sınırı katmanını ve kategori eşlemesini ekle. Ardından `app/src/config.ts` → `CITY_LIST`'e şehri ekle.
 

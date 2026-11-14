@@ -13,7 +13,7 @@
 // Besides the crime data, each city gets {city}.costs.json with nightly stay prices (Inside Airbnb) and
 // monthly rents (HUD Small Area FMRs) per area; see src/costs.mjs. A cost source that fails never fails the build.
 
-import { mkdir, writeFile, rm } from 'node:fs/promises';
+import { mkdir, readdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { inflateRawSync } from 'node:zlib';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -44,6 +44,15 @@ function parseArgs(argv) {
 const json = (obj) => JSON.stringify(obj);
 
 const USER_AGENT = 'SafeHop data pipeline (+https://ertugrulozvardar.github.io/SafeHop/)';
+
+// Newest committed copy of the HUD rent table (data-pipeline/static/hud-safmr-fy*.json), or null.
+async function loadStaticRents() {
+  const dir = join(here, 'static');
+  const files = (await readdir(dir).catch(() => [])).filter((f) => /^hud-safmr-fy\d{4}\.json$/.test(f)).sort();
+  if (!files.length) return null;
+  const doc = JSON.parse(await readFile(join(dir, files[files.length - 1]), 'utf8'));
+  return { fy: doc.fy, rents: new Map(Object.entries(doc.rents)) };
+}
 
 async function fetchWithRetry(url, retries = 2) {
   let last;
@@ -118,6 +127,7 @@ async function main() {
     inflateRaw: (bytes) => new Uint8Array(inflateRawSync(bytes)),
     log: ctx.log,
     cache: new Map(),
+    staticRents: await loadStaticRents(),
   };
   const costs = {};
   for (const city of selected) {

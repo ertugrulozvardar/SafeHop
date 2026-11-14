@@ -183,3 +183,26 @@ test('buildCosts downloads and summarises new editions (Inside Airbnb + HUD) end
   assert.deepEqual(c.rent.areas.B, [1800, 2000, 2500, 3100]);
   assert.ok(seen.some((u) => u.includes('HUD_PDR_Small_Area_Fair_Market_Rents/FeatureServer/0/query?')));
 });
+
+test('buildCosts falls back to the committed HUD copy when huduser.gov is unreachable', async () => {
+  const logs = [];
+  const io = {
+    fetchText: async () => { throw new Error('offline'); },
+    fetchBytes: async () => { throw new Error('HTTP 403'); },
+    fetchJson: async () => ({
+      type: 'FeatureCollection',
+      features: [{ type: 'Feature', properties: { ZCTA5CE20: '60601' }, geometry: { type: 'Polygon', coordinates: sq(-87.705, 41.795, 0.02) } }],
+    }),
+    inflateRaw: inflate,
+    log: (m) => logs.push(m),
+    cache: new Map(),
+    staticRents: { fy: 2027, rents: new Map([['60601', [2520, 2670, 3020, 3880]]]) },
+  };
+  const c = await buildCosts({ cityId: 'miami', geojson: areas, previous: { stay: null, rent: null }, now: new Date('2026-11-14T10:00:00Z'), io });
+  assert.equal(c.rent.fy, 2027);
+  assert.deepEqual(c.rent.areas.A, [2520, 2670, 3020, 3880]);
+  assert.ok(logs.some((l) => /download failed: HTTP 403/.test(l)), 'the failure reason is logged');
+  // a newer published edition is never replaced by an older committed copy
+  const kept = await buildCosts({ cityId: 'miami', geojson: areas, previous: { rent: { fy: 2028, areas: {} } }, now: new Date('2027-11-14T10:00:00Z'), io });
+  assert.equal(kept.rent.fy, 2028);
+});
