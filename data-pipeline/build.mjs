@@ -9,11 +9,16 @@
 //                                        # if a city fails, reuse its last published file
 //
 // Env: SOCRATA_APP_TOKEN (optional, raises API rate limits), SAFEHOP_PREVIOUS_BASE.
+//
+// Besides the crime data, each city gets {city}.costs.json with nightly stay prices (Inside Airbnb) and
+// monthly rents (HUD Small Area FMRs) per area; see src/costs.mjs. A cost source that fails never fails the build.
 
 import { mkdir, writeFile, rm } from 'node:fs/promises';
+import { inflateRawSync } from 'node:zlib';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CITIES, CATEGORIES, buildCity, fetchJson } from './src/pipeline.mjs';
+import { buildCosts } from './src/costs.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '..');
@@ -37,6 +42,23 @@ function parseArgs(argv) {
 }
 
 const json = (obj) => JSON.stringify(obj);
+
+const USER_AGENT = 'SafeHop data pipeline (+https://ertugrulozvardar.github.io/SafeHop/)';
+
+async function fetchWithRetry(url, retries = 2) {
+  let last;
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
+      if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+      return res;
+    } catch (err) {
+      last = err;
+      if (i < retries) await new Promise((r) => setTimeout(r, 2000 * (i + 1)));
+    }
+  }
+  throw last;
+}
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
@@ -88,11 +110,35 @@ async function main() {
     }
   }
 
+  // Living costs (nightly stays + rents). Reuses the previously published file when nothing changed.
+  const costIo = {
+    fetchText: (url) => fetchWithRetry(url).then((r) => r.text()),
+    fetchBytes: (url) => fetchWithRetry(url).then(async (r) => new Uint8Array(await r.arrayBuffer())),
+    fetchJson: (url) => fetchJson(url, { headers: { 'User-Agent': USER_AGENT }, log: ctx.log }),
+    inflateRaw: (bytes) => new Uint8Array(inflateRawSync(bytes)),
+    log: ctx.log,
+    cache: new Map(),
+  };
+  const costs = {};
+  for (const city of selected) {
+    const r = results[city.id];
+    if (!r) continue;
+    let previous = null;
+    if (args.previous) previous = await fetchJson(`${args.previous}/${city.id}.costs.json`, { retries: 0 }).catch(() => null);
+    try {
+      costs[city.id] = await buildCosts({ cityId: city.id, geojson: r.geojson, previous, now: ctx.now, io: costIo });
+    } catch (err) {
+      console.error(`[${city.id}] costs FAILED: ${err.message}`);
+      costs[city.id] = previous;
+    }
+  }
+
   for (const city of selected) {
     const r = results[city.id];
     if (!r) continue;
     await writeFile(join(args.out, `${city.id}.json`), json(r.data));
     await writeFile(join(args.out, `${city.id}.areas.json`), json(r.geojson));
+    if (costs[city.id]) await writeFile(join(args.out, `${city.id}.costs.json`), json(costs[city.id]));
     index.cities.push({
       id: r.data.id,
       name: r.data.name,
@@ -103,7 +149,11 @@ async function main() {
       stale: Boolean(r.data.stale),
       areaCount: r.data.areas.length,
       total: r.data.totals.all,
-      files: { data: `${city.id}.json`, areas: `${city.id}.areas.json` },
+      files: {
+        data: `${city.id}.json`,
+        areas: `${city.id}.areas.json`,
+        ...(costs[city.id] ? { costs: `${city.id}.costs.json` } : {}),
+      },
     });
   }
   await writeFile(join(args.out, 'index.json'), json(index));

@@ -66,7 +66,7 @@ export interface CityIndexEntry {
   stale: boolean;
   areaCount: number;
   total: number;
-  files: { data: string; areas: string };
+  files: { data: string; areas: string; costs?: string };
 }
 
 export interface DataIndex {
@@ -76,4 +76,31 @@ export interface DataIndex {
   cities: CityIndexEntry[];
   /** Optional endpoints for the route planner (see data-pipeline/build.mjs). */
   services?: { routing?: string; geocoding?: string };
+}
+
+/** [median nightly price in USD, number of listings] */
+export type StayValue = [number, number];
+
+/** Living costs per area, from data-pipeline/src/costs.mjs ({city}.costs.json). */
+export interface CostData {
+  version: number;
+  id: string;
+  generatedAt: string;
+  stay: null | {
+    source: string;
+    url: string;
+    license: string;
+    snapshot: string; // YYYY-MM-DD the listings were collected
+    listings: number;
+    longStayShare: number; // share of listings that require stays of 30+ nights
+    city: { entire: number | null; room: number | null };
+    areas: Record<string, { entire?: StayValue; room?: StayValue }>;
+  };
+  rent: null | {
+    source: string;
+    url: string;
+    fy: number; // HUD fiscal year
+    /** Monthly rent in USD for studio, 1, 2 and 3 bedrooms. */
+    areas: Record<string, [number, number, number, number]>;
+  };
 }

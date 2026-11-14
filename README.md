@@ -150,6 +150,11 @@ cd app && npm run typecheck           # TypeScript kontrolü
 - Rota servisi: FOSSGIS'in ücretsiz Valhalla sunucusu (`valhalla1.openstreetmap.de`, en fazla 1 istek/sn). Yer arama: komoot'un ücretsiz Photon servisi (`photon.komoot.io`). İkisi de OpenStreetMap verisi kullanır, uygulamada atıf var.
 - Adresler `site/data/v1/index.json` içindeki `services` alanından okunur, yani kullanım büyürse uygulamayı güncellemeden başka bir sağlayıcıya geçilebilir: GitHub → Settings → Secrets and variables → Actions'a `SAFEHOP_ROUTING_URL` / `SAFEHOP_GEOCODING_URL` secret'larını eklemek yeterli (workflow bunları okuyor) (Valhalla ve Photon uyumlu herhangi bir servis, ör. Stadia Maps ya da kendi sunucun). Test için `app/.env` içinde `EXPO_PUBLIC_ROUTING_URL` / `EXPO_PUBLIC_GEOCODING_URL` da kullanılabilir.
 
+**Konaklama ve kira (v1.2):** Şehir haritasında üstte **Safety / Stay / Rent** sekmeleri var. Veriler her şehir için `site/data/v1/{şehir}.costs.json` dosyasına yazılır (`data-pipeline/src/costs.mjs`):
+- **Stay:** Inside Airbnb'nin `listings.csv` dosyasından (CC BY 4.0), son 12 ayda rezervasyon almış ve en fazla 30 gecelik konaklamaya izin veren ilanların bölge bazında medyan gecelik fiyatı. Inside Airbnb yaklaşık 3 ayda bir yeni veri yayınlar; workflow haftada bir kontrol eder, sadece yeni veri çıkınca indirir. Miami için veri yok.
+- **Rent:** HUD Small Area Fair Market Rents (posta kodu bazında, stüdyo–3+1), her bölgenin kapsadığı posta kodlarına göre ağırlıklı ortalama. HUD dosyası yılda bir (Ekim) yenilenir; workflow yeni mali yılın dosyası çıkınca otomatik alır.
+- Bir kaynak hata verirse önceki yayındaki veri korunur, build başarısız olmaz. Actions loglarında `costs:` satırlarından takip edilebilir.
+
 **Yeni şehir eklemek:** `pipeline.mjs` → `CITIES` listesine kaynak API'yi, tarih alanını, mahalle sınırı katmanını ve kategori eşlemesini ekle. Ardından `app/src/config.ts` → `CITY_LIST`'e şehri ekle.
 
 **Önemli:** Uygulama bir güvenlik garantisi değil, bilgilendirme aracıdır. Renkler sadece aynı şehirdeki bölgeleri birbiriyle karşılaştırır. Kalabalık bölgelerde (downtown, gece hayatı) daha çok insan olduğu için daha çok olay bildirilir. Uygulama içindeki "About" ekranı bunları kullanıcıya açıklıyor.

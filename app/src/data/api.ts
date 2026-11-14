@@ -1,6 +1,6 @@
 import { DATA_URL, DATA_URL_CONFIGURED, DEFAULT_GEOCODING_URL, DEFAULT_ROUTING_URL, SERVICE_OVERRIDE } from '../config';
 import { bundled, bundledIndex } from './bundled';
-import type { AreaCollection, CityData, DataIndex } from './types';
+import type { AreaCollection, CityData, CostData, DataIndex } from './types';
 
 export type DataOrigin = 'online' | 'offline-copy';
 
@@ -60,6 +60,16 @@ export async function loadCity(
       ? 'Data for this city is not available yet.'
       : 'The data source is not configured yet. Set EXPO_PUBLIC_DATA_URL (see README).'
   );
+}
+
+/** Living costs for a city, or null if they aren't published (yet) or can't be downloaded. */
+export async function loadCosts(id: string): Promise<CostData | null> {
+  if (!DATA_URL_CONFIGURED) return null;
+  try {
+    return await getJson<CostData>(`${id}.costs.json`);
+  } catch {
+    return null;
+  }
 }
 
 export interface ServiceConfig {

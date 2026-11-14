@@ -47,6 +47,20 @@ LA ya da Miami'de araç mı kiralıyorsun? 🚗 Park etmeden önce araçtan hır
 
 ---
 
+## Reel 4 – `reel-4-safest-route.mp4` (post after version 1.1 is live)
+**Cover text:** Walking back to your hotel?
+
+**Caption (EN):**
+Walking back to your hotel in a new city? 🧭
+SafeHop now finds the safest route between two places using 6 months of official police data — then start it in Apple Maps or Google Maps.
+Free on the App Store, link in bio.
+#traveltips #travelsafety #solotravel #chicago #nyc #ustravel #citywalk
+
+**Caption (TR, isteğe bağlı):**
+Yeni bir şehirde otele yürüyerek mi dönüyorsun? 🧭 SafeHop artık iki nokta arasındaki en güvenli rotayı resmi polis verileriyle buluyor; sonra Apple Maps ya da Google Maps'te başlatıyorsun. App Store'da ücretsiz, link bio'da.
+
+---
+
 ### Posting tips
 - Pick the first frame (the question) as the cover.
 - Share each Reel to your Story too, with a **link sticker** to the App Store page.

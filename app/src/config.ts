@@ -19,7 +19,7 @@ export const DEFAULT_GEOCODING_URL = process.env.EXPO_PUBLIC_GEOCODING_URL || 'h
 export const SERVICE_OVERRIDE = Boolean(process.env.EXPO_PUBLIC_ROUTING_URL || process.env.EXPO_PUBLIC_GEOCODING_URL);
 
 // Identifies the app to the routing / search servers, as their usage policies require.
-export const USER_AGENT = 'SafeHop/1.1 (+https://ertugrulozvardar.github.io/SafeHop/)';
+export const USER_AGENT = 'SafeHop/1.2 (+https://ertugrulozvardar.github.io/SafeHop/)';
 
 // Cities the app knows about, in display order. Data for each comes from the pipeline.
 export const CITY_LIST: { id: string; name: string; state: string; tagline: string }[] = [

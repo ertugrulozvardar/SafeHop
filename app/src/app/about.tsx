@@ -72,6 +72,35 @@ export default function AboutScreen() {
         </Pressable>
       </Section>
 
+      <Section title="Stay and rent prices">
+        <P>
+          The “Stay” and “Rent” tabs color each area by what it typically costs, split into thirds within the same city
+          (cheaper, mid-range, pricier), so you can compare cost with reported crime side by side.
+        </P>
+        <Bullet>
+          Stay: the median nightly price of Airbnb listings in the area that were booked in the last 12 months and allow
+          stays of 30 nights or less (entire places and private rooms separately). Areas with fewer than 10 such listings
+          are left gray. Data collected by Inside Airbnb (CC BY 4.0) about every three months; not available for Miami.
+        </Bullet>
+        <Bullet>
+          Rent: HUD Small Area Fair Market Rents, the U.S. government’s yearly estimate of typical rents by ZIP code
+          (studio to 3 bedrooms), averaged over the ZIP codes each area covers.
+        </Bullet>
+        <Bullet>Prices are guides, not quotes: they change with season, events and the specific home.</Bullet>
+        <Pressable onPress={() => Linking.openURL('https://insideairbnb.com/get-the-data/')} style={styles.sourceRow} accessibilityRole="link">
+          <Text style={styles.bold}>Nightly prices</Text>
+          <Text style={styles.link}>Inside Airbnb – insideairbnb.com</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => Linking.openURL('https://www.huduser.gov/portal/datasets/fmr/smallarea/index.html')}
+          style={styles.sourceRow}
+          accessibilityRole="link"
+        >
+          <Text style={styles.bold}>Rents</Text>
+          <Text style={styles.link}>HUD Small Area Fair Market Rents</Text>
+        </Pressable>
+      </Section>
+
       <Section title="Data sources">
         <P>All data comes from official open-data portals and is refreshed daily when new data is published.</P>
         {SOURCES.map((s) => (
