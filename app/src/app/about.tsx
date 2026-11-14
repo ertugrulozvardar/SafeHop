@@ -10,6 +10,11 @@ const SOURCES = [
   { city: 'New York City', agency: 'NYPD (NYC Open Data)', url: 'https://data.cityofnewyork.us/Public-Safety/NYPD-Complaint-Data-Current-Year-To-Date-/5uac-w243' },
   { city: 'Miami', agency: 'City of Miami Police Department', url: 'https://datahub-miamigis.opendata.arcgis.com/' },
   { city: 'Seattle', agency: 'Seattle Police Department', url: 'https://data.seattle.gov/Public-Safety/SPD-Crime-Data-2008-Present/tazs-3rd5' },
+  { city: 'San Francisco', agency: 'San Francisco Police Department', url: 'https://data.sfgov.org/Public-Safety/Police-Department-Incident-Reports-2018-to-Present/wg3w-h783' },
+  { city: 'Washington, DC', agency: 'Metropolitan Police Department', url: 'https://opendata.dc.gov/' },
+  { city: 'Boston', agency: 'Boston Police Department', url: 'https://data.boston.gov/dataset/crime-incident-reports-august-2015-to-date-source-new-system' },
+  { city: 'San Diego', agency: 'San Diego Police Department', url: 'https://data.sandiego.gov/datasets/police-nibrs/' },
+  { city: 'Austin', agency: 'Austin Police Department', url: 'https://data.austintexas.gov/Public-Safety/Crime-Reports/fdj4-gpfu' },
 ];
 
 export default function AboutScreen() {
@@ -40,6 +45,8 @@ export default function AboutScreen() {
         <Bullet>The most recent weeks may be incomplete because reports are added late.</Bullet>
         <Bullet>New York data is published quarterly, so it can be a few months behind.</Bullet>
         <Bullet>Miami covers the City of Miami only. Miami Beach (including South Beach) has its own police department and is not included.</Bullet>
+        <Bullet>Washington, DC publishes serious offenses only: pickpocketing isn’t listed separately, and assault means assault with a dangerous weapon.</Bullet>
+        <Bullet>Austin data is updated weekly and lists only the most serious offense of each incident.</Bullet>
         <Bullet>SafeHop is an information tool, not a guarantee of safety. In an emergency, call 911.</Bullet>
       </Section>
 

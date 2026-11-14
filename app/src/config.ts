@@ -19,13 +19,19 @@ export const DEFAULT_GEOCODING_URL = process.env.EXPO_PUBLIC_GEOCODING_URL || 'h
 export const SERVICE_OVERRIDE = Boolean(process.env.EXPO_PUBLIC_ROUTING_URL || process.env.EXPO_PUBLIC_GEOCODING_URL);
 
 // Identifies the app to the routing / search servers, as their usage policies require.
-export const USER_AGENT = 'SafeHop/1.2 (+https://ertugrulozvardar.github.io/SafeHop/)';
+export const USER_AGENT = 'SafeHop/1.3 (+https://ertugrulozvardar.github.io/SafeHop/)';
 
-// Cities the app knows about, in display order. Data for each comes from the pipeline.
+// Cities the app knows about, in display order. Data for each comes from the pipeline; a city that isn't in the
+// published index yet (e.g. its source was down on the first run) is simply not listed.
 export const CITY_LIST: { id: string; name: string; state: string; tagline: string }[] = [
+  { id: 'austin', name: 'Austin', state: 'TX', tagline: '103 neighborhoods' },
+  { id: 'boston', name: 'Boston', state: 'MA', tagline: '12 police districts' },
   { id: 'chicago', name: 'Chicago', state: 'IL', tagline: '77 community areas' },
   { id: 'la', name: 'Los Angeles', state: 'CA', tagline: '21 LAPD divisions' },
-  { id: 'nyc', name: 'New York City', state: 'NY', tagline: 'All 5 boroughs, by NYPD precinct' },
   { id: 'miami', name: 'Miami', state: 'FL', tagline: 'City of Miami (not Miami Beach)' },
+  { id: 'nyc', name: 'New York City', state: 'NY', tagline: 'All 5 boroughs, by NYPD precinct' },
+  { id: 'sandiego', name: 'San Diego', state: 'CA', tagline: 'City of San Diego, by police neighborhood' },
+  { id: 'sf', name: 'San Francisco', state: 'CA', tagline: '41 neighborhoods' },
   { id: 'seattle', name: 'Seattle', state: 'WA', tagline: '58 police neighborhoods' },
+  { id: 'dc', name: 'Washington', state: 'DC', tagline: '46 neighborhood clusters' },
 ];

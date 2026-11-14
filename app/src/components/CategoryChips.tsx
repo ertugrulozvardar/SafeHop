@@ -1,14 +1,17 @@
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { CATEGORY_META, FILTERS } from '../data/categories';
-import type { CategoryFilter } from '../data/types';
+import type { CategoryFilter, CategoryId } from '../data/types';
 import { colors, radius } from '../theme';
 
 interface Props {
   value: CategoryFilter;
   onChange: (value: CategoryFilter) => void;
+  /** Categories this city's police data can tell apart (others are hidden). */
+  available?: readonly CategoryId[];
 }
 
-export function CategoryChips({ value, onChange }: Props) {
+export function CategoryChips({ value, onChange, available }: Props) {
+  const filters = available ? FILTERS.filter((f) => f === 'all' || available.includes(f)) : FILTERS;
   return (
     <ScrollView
       horizontal
@@ -16,7 +19,7 @@ export function CategoryChips({ value, onChange }: Props) {
       contentContainerStyle={styles.row}
       keyboardShouldPersistTaps="handled"
     >
-      {FILTERS.map((f) => {
+      {filters.map((f) => {
         const selected = f === value;
         return (
           <Pressable

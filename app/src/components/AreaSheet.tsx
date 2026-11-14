@@ -20,7 +20,10 @@ const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 export function AreaSheet({ city, area, metric, filter, onFilterChange, onClose, bottomInset }: Props) {
   const level = levelColors[metric.level];
   const label = CATEGORY_META[filter].label.toLowerCase();
-  const breakdown = CATEGORY_ORDER.map((id: CategoryId) => ({ id, value: sum(area.counts[id] ?? []) }));
+  const breakdown = CATEGORY_ORDER.filter((id) => city.categories.includes(id)).map((id: CategoryId) => ({
+    id,
+    value: sum(area.counts[id] ?? []),
+  }));
   const ratio = metric.ratioToMedian;
 
   return (

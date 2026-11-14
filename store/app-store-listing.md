@@ -61,8 +61,8 @@ crime map,crime rate,tourist,safety map,pickpocket,chicago,new york,los angeles,
 
 ## Screenshots
 Media Manager → iPhone:
-- **iPhone 6.3" (required, "Dynamic Island – medium display"):** `store/screenshots-6.3/01-…07-*.png` — 1206×2622
-- **iPhone 6.9" (optional, "Dynamic Island – large display"):** `store/screenshots/01-…07-*.png` — 1320×2868
+- **iPhone 6.3" (required, "Dynamic Island – medium display"):** `store/screenshots-6.3/01-…10-*.png` — 1206×2622
+- **iPhone 6.9" (optional, "Dynamic Island – large display"):** `store/screenshots/01-…10-*.png` — 1320×2868
 - **iPhone Duo (outer 1398×2034 / inner 2007×2853):** optional for now; Apple says it becomes required from April 2027 for apps built with the iOS 27.1 SDK or later.
 
 ## App Review Information

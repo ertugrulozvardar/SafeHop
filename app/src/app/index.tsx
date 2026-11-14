@@ -34,7 +34,7 @@ export default function HomeScreen() {
       </View>
 
       <Text style={styles.sectionTitle}>Choose a city</Text>
-      {CITY_LIST.map((c) => {
+      {CITY_LIST.filter((c) => !index || index.cities.some((x) => x.id === c.id)).map((c) => {
         const meta = index?.cities.find((x) => x.id === c.id);
         return (
           <Pressable

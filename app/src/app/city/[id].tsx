@@ -214,7 +214,7 @@ export default function CityScreen() {
       <View style={styles.topOverlay} pointerEvents="box-none">
         <ModeTabs value={tab} options={TABS} onChange={setTab} />
         {tab === 'safety' ? (
-          <CategoryChips value={filter} onChange={setFilter} />
+          <CategoryChips value={filter} onChange={setFilter} available={data.categories} />
         ) : tab === 'stay' ? (
           <ChoiceChips
             items={[

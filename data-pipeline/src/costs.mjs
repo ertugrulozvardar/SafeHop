@@ -190,6 +190,11 @@ export const INSIDE_AIRBNB = {
   la: 'united-states/ca/los-angeles',
   nyc: 'united-states/ny/new-york-city',
   seattle: 'united-states/wa/seattle',
+  sf: 'united-states/ca/san-francisco',
+  dc: 'united-states/dc/washington-dc',
+  boston: 'united-states/ma/boston',
+  sandiego: 'united-states/ca/san-diego',
+  austin: 'united-states/tx/austin',
   // Miami: Inside Airbnb has no City of Miami dataset (only Broward County).
 };
 

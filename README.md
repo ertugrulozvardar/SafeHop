@@ -1,6 +1,6 @@
 # SafeHop
 
-**Neighborhood safety for travelers.** Chicago, Los Angeles, New York City, Miami ve Seattle'da polise bildirilen olayları (yankesicilik, araçtan hırsızlık, gasp, saldırı vb.) son 6 ay üzerinden mahalle bazında haritada yeşil / sarı / kırmızı gösteren iOS + Android uygulaması.
+**Neighborhood safety for travelers.** Chicago, Los Angeles, New York City, Miami, Seattle, San Francisco, Washington DC, Boston, San Diego ve Austin'de polise bildirilen olayları (yankesicilik, araçtan hırsızlık, gasp, saldırı vb.) son 6 ay üzerinden mahalle bazında haritada yeşil / sarı / kırmızı gösteren iOS + Android uygulaması.
 
 ```
 SafeHop/
@@ -27,6 +27,11 @@ SafeHop/
 | New York | NYPD Complaint Data (current + historic) | 78 karakol bölgesi, mahalle adlarıyla | Üç ayda bir güncelleniyor |
 | Miami | City of Miami PD – Crimes (ArcGIS) | 13 polis mahallesi | **Miami Beach / South Beach dahil değil** |
 | Seattle | SPD Crime Data | 58 mahalle (MCPP) | |
+| San Francisco | SFPD Incident Reports 2018– (data.sf.gov) | 41 analysis neighborhood | Sadece ilk raporlar (II/VI) sayılıyor, ekler (supplement) hariç |
+| Washington DC | MPD Crime Incidents (yıllık ArcGIS katmanları) | 46 neighborhood cluster | Sadece ağır suçlar yayınlanıyor: yankesicilik ayrı kategori yok, saldırı = silahlı saldırı |
+| Boston | BPD Crime Incident Reports (Analyze Boston, CKAN) | 12 BPD bölgesi | data.boston.gov Türkiye'den erişime kapalı; GitHub Actions (ABD) üzerinden çalışıyor |
+| San Diego | SDPD NIBRS Crime Offenses (ArcGIS) | SDPD mahalleleri (beat) | Sunucu Türkiye'den açılmıyor; aile içi olay işareti yok |
+| Austin | APD Crime Reports | 103 mahalle | Olaylar census block group ile geliyor, mahallelere konumla dağıtılıyor; haftalık güncelleniyor |
 
 Sayılmayanlar: market hırsızlığı (shoplifting), dolandırıcılık, uyuşturucu, trafik suçları ve (verinin işaretlediği yerlerde) aile içi olaylar.
 

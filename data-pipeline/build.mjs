@@ -22,7 +22,7 @@ import { buildCosts } from './src/costs.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '..');
-const ORDER = ['chicago', 'la', 'nyc', 'miami', 'seattle'];
+const ORDER = ['chicago', 'la', 'nyc', 'miami', 'seattle', 'sf', 'dc', 'boston', 'sandiego', 'austin'];
 
 function parseArgs(argv) {
   const args = { out: join(repoRoot, 'site', 'data', 'v1'), cities: null, appSnapshot: false, previous: process.env.SAFEHOP_PREVIOUS_BASE || null };
@@ -93,6 +93,10 @@ async function main() {
   };
   const results = {};
   const failed = [];
+  // Cities that were never published yet (newly added) don't fail the build when their source is down:
+  // they are simply left out until a later run succeeds.
+  const previousIndex = args.previous ? await fetchJson(`${args.previous}/index.json`, { retries: 1 }).catch(() => null) : null;
+  const published = new Set(((previousIndex && previousIndex.cities) || []).map((c) => c.id));
 
   for (const city of selected) {
     const t0 = Date.now();
@@ -114,6 +118,10 @@ async function main() {
         } catch (e2) {
           console.error(`[${city.id}] no previous data available: ${e2.message}`);
         }
+      }
+      if (previousIndex && !published.has(city.id)) {
+        console.warn(`[${city.id}] new city not published yet; leaving it out of this run`);
+        continue;
       }
       failed.push(city.id);
     }

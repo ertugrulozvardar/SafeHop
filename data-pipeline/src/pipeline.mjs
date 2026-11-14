@@ -76,6 +76,70 @@ export function nycCategory(ofnsDesc, pdDesc) {
   return null;
 }
 
+// San Francisco Police Department (incident category / subcategory / description).
+export function sfCategory(category, subcategory, description) {
+  const c = String(category || '').toLowerCase();
+  const s = String(subcategory || '').toLowerCase();
+  const d = String(description || '').toLowerCase();
+  if (c === 'larceny theft') {
+    if (s.includes('shoplifting')) return null;
+    if (s.includes('pickpocket') || s.includes('purse snatch') || /from person|drunk roll/.test(d)) return 'pickpocket';
+    if (s.includes('from vehicle') || s.includes('auto parts') || d.includes('license plate')) return 'car_breakin';
+    if (/lost property|checks or credit|embezzle|merchant|utility|telecommunication|fiduciary|written instrument/.test(d)) return null;
+    return 'theft';
+  }
+  if (c === 'robbery') return 'robbery';
+  if (c === 'assault') return /spouse|dating|domestic/.test(d) ? null : 'assault';
+  if (c === 'burglary') return 'burglary';
+  if (c.startsWith('motor vehicle theft')) return d.includes('stolen outside') ? null : 'vehicle_theft';
+  return null;
+}
+
+// Austin Police Department (crime type text; family-violence flag).
+export function austinCategory(crimeType, familyViolence) {
+  const t = String(crimeType || '').toUpperCase().trim();
+  if (String(familyViolence || '').toUpperCase() === 'Y' || t.includes('FAM/DATING')) return null;
+  if (t === 'THEFT FROM PERSON' || t === 'PURSE SNATCHING' || t === 'POCKET PICKING') return 'pickpocket';
+  if (/^BURGLARY OF VEH|^THEFT FROM AUTO$|^THEFT OF AUTO PARTS$|CATALYTIC|^THEFT OF LICENSE PLATE$/.test(t)) return 'car_breakin';
+  if (['THEFT', 'THEFT OF BICYCLE', 'THEFT FROM BUILDING', 'THEFT-NO SUSPECT/FOLLOWUP', 'THEFT OF TRAILER'].includes(t)) return 'theft';
+  if (t.includes('ROBBERY')) return 'robbery';
+  if (/(^|\s)(ASSAULT|ASLT)\b/.test(t) && !/SEXUAL|INDECENT|PREGNANT|CHILD|ELDERLY|DISABLED/.test(t)) return 'assault';
+  if (/^BURGLARY (OF RESIDENCE|NON RESIDENCE|OF SHED)|^BURG OF RES/.test(t)) return 'burglary';
+  if (t === 'AUTO THEFT') return 'vehicle_theft';
+  return null;
+}
+
+// Washington DC Metropolitan Police (only serious "Part I" offenses are published).
+export function dcCategory(offense) {
+  return (
+    {
+      'THEFT F/AUTO': 'car_breakin',
+      'THEFT/OTHER': 'theft',
+      ROBBERY: 'robbery',
+      'ASSAULT W/DANGEROUS WEAPON': 'assault',
+      BURGLARY: 'burglary',
+      'MOTOR VEHICLE THEFT': 'vehicle_theft',
+    }[String(offense || '').toUpperCase().trim()] || null
+  );
+}
+
+// Boston Police Department (offense description text).
+export function bostonCategory(description) {
+  const d = String(description || '').toUpperCase();
+  if (/SHOPLIFT/.test(d)) return null;
+  if (/PICK-?POCKET|PURSE SNATCH|FROM PERSON|SNATCH/.test(d)) return 'pickpocket';
+  if (/ROBBERY/.test(d)) return 'robbery';
+  if (/(FROM|IN) (THE )?(MV|M\/V|MOTOR VEHICLE|VEHICLE)\b|ACCESSOR|VEHICLE PARTS|MV PARTS|B&E.*(MV|M\/V)/.test(d)) return 'car_breakin';
+  if (/AUTO THEFT|MOTOR VEHICLE THEFT|VEHICLE THEFT|THEFT OF (A )?(MV|M\/V|MOTOR VEHICLE)/.test(d)) return /RECOVER/.test(d) ? null : 'vehicle_theft';
+  if (/LARCENY|THEFT/.test(d)) {
+    if (/FRAUD|IDENTITY|EMBEZZ|SERVICE|CHECK|CREDIT CARD|SCHEME|PRETENSE|EXTORTION|RECEIV|STOLEN PROPERTY|LOST/.test(d)) return null;
+    return 'theft';
+  }
+  if (/ASSAULT|BATTERY/.test(d) && !/SEXUAL|INDECENT|DOMESTIC|THREAT/.test(d)) return 'assault';
+  if (/BURGLARY|B&E|BREAKING AND ENTERING/.test(d)) return 'burglary';
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // HTTP helpers
 // ---------------------------------------------------------------------------
@@ -111,6 +175,17 @@ const qs = (params) =>
 // Socrata "floating timestamp" literal (no time zone). We treat everything as UTC.
 const socrataTs = (d) => d.toISOString().slice(0, 19);
 const arcgisTs = (d) => d.toISOString().slice(0, 19).replace('T', ' ');
+const sqlTs = arcgisTs;
+const and = (...parts) => parts.filter(Boolean).map((p) => `(${p})`).join(' AND ');
+// Upper bound for "latest record" lookups, so a few bad future dates in a source don't move the window.
+const notAfter = (ctx) => new Date(ctx.now.getTime() + DAY);
+
+// ArcGIS servers backed by some databases return statistic names in upper case.
+function attr(attributes, name) {
+  if (name in attributes) return attributes[name];
+  const key = Object.keys(attributes).find((k) => k.toLowerCase() === name.toLowerCase());
+  return key === undefined ? undefined : attributes[key];
+}
 
 // ---------------------------------------------------------------------------
 // Crime sources
@@ -120,8 +195,9 @@ function socrataHeaders(ctx) {
   return ctx.socrataAppToken ? { 'X-App-Token': ctx.socrataAppToken } : {};
 }
 
-async function socrataMaxDate(base, dateField, ctx) {
-  const rows = await fetchJson(`${base}?${qs({ $select: `max(${dateField}) as m` })}`, {
+async function socrataMaxDate(base, src, ctx) {
+  const where = and(`${src.dateField} < '${socrataTs(notAfter(ctx))}'`, src.where);
+  const rows = await fetchJson(`${base}?${qs({ $select: `max(${src.dateField}) as m`, $where: where })}`, {
     headers: socrataHeaders(ctx),
     log: ctx.log,
   });
@@ -132,7 +208,7 @@ async function socrataMaxDate(base, dateField, ctx) {
 async function socrataGroupedCounts(base, src, start, end, ctx) {
   const pageSize = 50000;
   const select = [...src.groupFields, 'count(*) as n'].join(',');
-  const where = `${src.dateField} >= '${socrataTs(start)}' AND ${src.dateField} < '${socrataTs(end)}'`;
+  const where = and(`${src.dateField} >= '${socrataTs(start)}' AND ${src.dateField} < '${socrataTs(end)}'`, src.where);
   const out = [];
   for (let offset = 0; ; offset += pageSize) {
     const url = `${base}?${qs({
@@ -150,31 +226,143 @@ async function socrataGroupedCounts(base, src, start, end, ctx) {
   return out;
 }
 
-async function arcgisMaxDate(layerUrl, dateField, ctx) {
-  const stats = JSON.stringify([{ statisticType: 'max', onStatisticField: dateField, outStatisticFieldName: 'm' }]);
-  const json = await fetchJson(`${layerUrl}/query?${qs({ where: '1=1', outStatistics: stats, f: 'json' })}`, { log: ctx.log });
-  const m = json.features && json.features[0] && json.features[0].attributes.m;
-  if (!m) throw new Error(`No max date for ${layerUrl}`);
-  return new Date(m);
+// Layers of an ArcGIS source. `yearLayers` covers services that publish one layer per year
+// (e.g. "Crime Incidents - 2026"); the right layers are looked up by name on every run.
+const layerCache = new WeakMap();
+async function arcgisLayers(src, ctx) {
+  if (src.layerUrl) return [{ url: src.layerUrl, year: null }];
+  if (!layerCache.has(src)) {
+    layerCache.set(
+      src,
+      fetchJson(`${src.yearLayers.service}?f=json`, { log: ctx.log }).then((svc) =>
+        (svc.layers || [])
+          .map((l) => ({ m: String(l.name).trim().match(src.yearLayers.pattern), id: l.id }))
+          .filter((l) => l.m)
+          .map((l) => ({ url: `${src.yearLayers.service}/${l.id}`, year: Number(l.m[1]) }))
+          .sort((a, b) => b.year - a.year)
+      )
+    );
+  }
+  const layers = await layerCache.get(src);
+  if (!layers.length) throw new Error(`No yearly layers found in ${src.yearLayers.service}`);
+  return layers;
 }
 
-async function arcgisGroupedCounts(layerUrl, src, start, end, ctx) {
-  const stats = JSON.stringify([{ statisticType: 'count', onStatisticField: 'OBJECTID', outStatisticFieldName: 'n' }]);
-  const where = `${src.dateField} >= TIMESTAMP '${arcgisTs(start)}' AND ${src.dateField} < TIMESTAMP '${arcgisTs(end)}'`;
+async function arcgisMaxDate(src, ctx) {
+  const layers = (await arcgisLayers(src, ctx)).slice(0, 2); // newest two years (early January: last year's layer)
+  const stats = JSON.stringify([{ statisticType: 'max', onStatisticField: src.dateField, outStatisticFieldName: 'm' }]);
+  const where = and(`${src.dateField} < TIMESTAMP '${arcgisTs(notAfter(ctx))}'`, src.where);
+  let best = null;
+  for (const layer of layers) {
+    const json = await fetchJson(`${layer.url}/query?${qs({ where, outStatistics: stats, f: 'json' })}`, { log: ctx.log });
+    const m = json.features && json.features[0] && attr(json.features[0].attributes, 'm');
+    if (m && (!best || m > best)) best = m;
+  }
+  if (!best) throw new Error(`No max date for ${layers[0].url}`);
+  return new Date(best);
+}
+
+async function arcgisLayerCounts(layerUrl, src, start, end, ctx, depth = 0) {
+  const stats = JSON.stringify([{ statisticType: 'count', onStatisticField: src.countField || 'OBJECTID', outStatisticFieldName: 'n' }]);
+  const where = and(`${src.dateField} >= TIMESTAMP '${arcgisTs(start)}' AND ${src.dateField} < TIMESTAMP '${arcgisTs(end)}'`, src.where);
   const json = await fetchJson(
     `${layerUrl}/query?${qs({ where, groupByFieldsForStatistics: src.groupFields.join(','), outStatistics: stats, f: 'json' })}`,
     { log: ctx.log }
   );
-  if (json.exceededTransferLimit) throw new Error('ArcGIS statistics result exceeded transfer limit');
-  return (json.features || []).map((f) => ({ ...f.attributes, n: Number(f.attributes.n) || 0 }));
+  if (json.exceededTransferLimit) {
+    // Too many groups for one response: split the time range and add up the halves.
+    if (end - start <= DAY || depth > 6) throw new Error('ArcGIS statistics result exceeded transfer limit');
+    const halfDays = Math.floor((end - start) / 2 / DAY);
+    const mid = new Date(start.getTime() + (halfDays > 0 ? halfDays * DAY : (end - start) / 2));
+    const a = await arcgisLayerCounts(layerUrl, src, start, mid, ctx, depth + 1);
+    const b = await arcgisLayerCounts(layerUrl, src, mid, end, ctx, depth + 1);
+    return [...a, ...b];
+  }
+  return (json.features || []).map((f) => {
+    const row = {};
+    for (const field of src.groupFields) row[field] = attr(f.attributes, field);
+    row.n = Number(attr(f.attributes, 'n')) || 0;
+    return row;
+  });
+}
+
+async function arcgisGroupedCounts(src, start, end, ctx) {
+  const layers = (await arcgisLayers(src, ctx)).filter(
+    (l) => l.year === null || (l.year >= start.getUTCFullYear() && l.year <= new Date(end.getTime() - 1).getUTCFullYear())
+  );
+  const parts = [];
+  for (const l of layers) parts.push(...(await arcgisLayerCounts(l.url, src, start, end, ctx)));
+  return parts;
+}
+
+// CKAN datastore (e.g. Analyze Boston). Resources are found by their columns, so a new yearly
+// resource is picked up automatically; only the ones that reach into the time window are queried.
+const ckanCache = new WeakMap();
+// "2026-11-10 14:30:00", "2026-11-10T14:30:00", "…+00", "…-05:00" or "…Z" → Date (no offset = UTC).
+export function parseSqlDate(value) {
+  let s = String(value).trim().replace(' ', 'T');
+  const m = s.slice(10).match(/([zZ]|[+-]\d\d)(:?(\d\d))?$/);
+  if (!m) return new Date(s + 'Z');
+  if (m[1] !== 'z' && m[1] !== 'Z' && !m[2]) s += ':00'; // "+00" → "+00:00"
+  return new Date(s);
+}
+async function ckanResources(src, ctx) {
+  if (!ckanCache.has(src)) {
+    ckanCache.set(
+      src,
+      (async () => {
+        const pkg = await fetchJson(`${src.api}/package_show?${qs({ id: src.packageId })}`, { log: ctx.log });
+        const out = [];
+        for (const res of (pkg.result && pkg.result.resources) || []) {
+          if (!res.datastore_active) continue;
+          try {
+            const info = await fetchJson(`${src.api}/datastore_search?${qs({ resource_id: res.id, limit: 0 })}`, { log: ctx.log, retries: 1 });
+            const names = ((info.result && info.result.fields) || []).map((f) => f.id);
+            const col = (want) => names.find((n) => n.toLowerCase() === want.toLowerCase());
+            const cols = { date: col(src.dateField), groups: src.groupFields.map(col) };
+            if (!cols.date || cols.groups.some((c) => !c)) continue;
+            const sql = `SELECT MIN("${cols.date}") AS lo, MAX("${cols.date}") AS hi FROM "${res.id}" WHERE "${cols.date}" < '${sqlTs(notAfter(ctx))}'`;
+            const range = await fetchJson(`${src.api}/datastore_search_sql?${qs({ sql })}`, { log: ctx.log, retries: 1 });
+            const rec = range.result && range.result.records && range.result.records[0];
+            if (!rec || !rec.hi) continue;
+            out.push({ id: res.id, name: res.name, cols, lo: parseSqlDate(rec.lo), hi: parseSqlDate(rec.hi) });
+          } catch (err) {
+            ctx.log(`  skipping resource ${res.name || res.id}: ${err.message}`);
+          }
+        }
+        if (!out.length) throw new Error(`No usable datastore resources in ${src.packageId}`);
+        ctx.log(`resources: ${out.map((r) => `${r.name} (${r.lo.toISOString().slice(0, 10)}…${r.hi.toISOString().slice(0, 10)})`).join(', ')}`);
+        return out;
+      })()
+    );
+  }
+  return ckanCache.get(src);
+}
+
+async function ckanMaxDate(src, ctx) {
+  const resources = await ckanResources(src, ctx);
+  return new Date(Math.max(...resources.map((r) => r.hi.getTime())));
+}
+
+async function ckanGroupedCounts(src, start, end, ctx) {
+  const resources = (await ckanResources(src, ctx)).filter((r) => r.hi >= start && r.lo < end);
+  const out = [];
+  for (const r of resources) {
+    const g = r.cols.groups.map((c) => `"${c}"`).join(', ');
+    const sql = `SELECT ${r.cols.groups.map((c, i) => `"${c}" AS "${src.groupFields[i]}"`).join(', ')}, COUNT(*) AS n FROM "${r.id}" WHERE "${r.cols.date}" >= '${sqlTs(start)}' AND "${r.cols.date}" < '${sqlTs(end)}' GROUP BY ${g}`;
+    const json = await fetchJson(`${src.api}/datastore_search_sql?${qs({ sql })}`, { log: ctx.log });
+    for (const rec of (json.result && json.result.records) || []) out.push({ ...rec, n: Number(rec.n) || 0 });
+  }
+  return out;
 }
 
 async function sourceMaxDate(src, ctx) {
   if (src.type === 'socrata') {
-    const dates = await Promise.all(src.bases.map((b) => socrataMaxDate(b, src.dateField, ctx)));
+    const dates = await Promise.all(src.bases.map((b) => socrataMaxDate(b, src, ctx)));
     return new Date(Math.max(...dates.map((d) => d.getTime())));
   }
-  if (src.type === 'arcgis') return arcgisMaxDate(src.layerUrl, src.dateField, ctx);
+  if (src.type === 'arcgis') return arcgisMaxDate(src, ctx);
+  if (src.type === 'ckan') return ckanMaxDate(src, ctx);
   throw new Error(`Unknown source type ${src.type}`);
 }
 
@@ -185,7 +373,8 @@ async function sourceGroupedCounts(src, start, end, ctx) {
     const parts = await Promise.all(src.bases.map((b) => socrataGroupedCounts(b, src, start, end, ctx)));
     return parts.flat();
   }
-  if (src.type === 'arcgis') return arcgisGroupedCounts(src.layerUrl, src, start, end, ctx);
+  if (src.type === 'arcgis') return arcgisGroupedCounts(src, start, end, ctx);
+  if (src.type === 'ckan') return ckanGroupedCounts(src, start, end, ctx);
   throw new Error(`Unknown source type ${src.type}`);
 }
 
@@ -381,6 +570,7 @@ async function loadAreas(city, ctx) {
     const rawKey = f.properties && f.properties[city.areas.keyProp];
     if (rawKey === undefined || rawKey === null || rawKey === '') continue;
     const key = city.normalizeKey(rawKey);
+    if (!key || (city.skipKeys && city.skipKeys.includes(key))) continue;
     const polys = toPolygons(f.geometry);
     if (!polys.length) continue;
     const rawName = city.areas.nameProp ? f.properties[city.areas.nameProp] : rawKey;
@@ -458,6 +648,60 @@ export function nycBorough(precinct) {
   if (p >= 100 && p <= 115) return 'Queens';
   if (p >= 120 && p <= 123) return 'Staten Island';
   return 'New York';
+}
+
+// NIBRS codes that map to one of SafeHop's categories (used to keep server-side groupings small).
+export const NIBRS_COUNTED = ['23A', '23B', '23D', '23E', '23F', '23G', '23H', '120', '13A', '13B', '220', '240'];
+
+// "Kalorama Heights, Adams Morgan, Lanier Heights" → ['Kalorama Heights', 'Adams Morgan', 'Lanier Heights']
+export const dcNames = (s) => String(s || '').split(',').map((x) => x.trim()).filter(Boolean);
+
+const DC_NAMES = {
+  4: 'Georgetown / Burleith',
+  6: 'Dupont Circle / K Street',
+  9: 'Southwest Waterfront / Fort McNair',
+};
+
+const BOSTON_DISTRICTS = {
+  A1: 'Downtown / Beacon Hill / North End',
+  A7: 'East Boston',
+  A15: 'Charlestown',
+  B2: 'Roxbury',
+  B3: 'Mattapan',
+  C6: 'South Boston',
+  C11: 'Dorchester',
+  D4: 'Back Bay / South End / Fenway',
+  D14: 'Allston / Brighton',
+  E5: 'West Roxbury / Roslindale',
+  E13: 'Jamaica Plain',
+  E18: 'Hyde Park',
+};
+
+// "MT HOPE" → "Mt. Hope", "ROSEVILLE / FLEET RIDGE" → "Roseville / Fleet Ridge"
+export function sdName(raw) {
+  return titleCase(String(raw).trim())
+    .replace(/\s*\/\s*/g, ' / ')
+    .replace(/^Mt\b\.?/, 'Mt.')
+    .replace(/\bO'([a-z])/g, (m, c) => `O'${c.toUpperCase()}`)
+    .replace(/^Core-columbia$/i, 'Core-Columbia');
+}
+
+// "AVERY RANCH--LAKELINE" → "Avery Ranch / Lakeline", keeps short codes like "MLK", "UT", "LBJ"
+const AUSTIN_NAMES = { RMMA: 'Mueller (RMMA)', UT: 'UT Campus', 'WEST AUSTIN NG': 'West Austin NG', 'ST. EDWARDS': "St. Edward's" };
+export function austinName(raw) {
+  const k = String(raw).trim().toUpperCase();
+  if (AUSTIN_NAMES[k]) return AUSTIN_NAMES[k];
+  return k
+    .split(/--/)
+    .map((part) =>
+      part
+        .split(/(\s+|-)/)
+        .map((w) => (/^(MLK|LBJ|UT|NG)$/.test(w) ? w : titleCase(w)))
+        .join('')
+    )
+    .join(' / ')
+    .replace(/\bMc([a-z])/g, (m, c) => `Mc${c.toUpperCase()}`)
+    .replace(/ At /g, ' at ');
 }
 
 // ---------------------------------------------------------------------------
@@ -621,11 +865,188 @@ export const CITIES = [
       })[e.key] || titleCase(e.rawName).replace(/\s*\/\s*/g, ' / '),
     notes: ['Counts use the date the offense occurred (NIBRS offenses).'],
   },
+  {
+    id: 'sf',
+    name: 'San Francisco',
+    state: 'CA',
+    agency: 'San Francisco Police Department (SFPD)',
+    datasetUrl: 'https://data.sfgov.org/Public-Safety/Police-Department-Incident-Reports-2018-to-Present/wg3w-h783',
+    areaUnit: 'Analysis neighborhood',
+    source: {
+      type: 'socrata',
+      bases: ['https://data.sf.gov/resource/wg3w-h783.json'],
+      dateField: 'incident_datetime',
+      // Initial reports only: supplements repeat an incident that was already counted.
+      where: "report_type_code in('II','VI')",
+      groupFields: ['analysis_neighborhood', 'incident_category', 'incident_subcategory', 'incident_description'],
+      areaOf: (r) => r.analysis_neighborhood,
+      categoryOf: (r) => sfCategory(r.incident_category, r.incident_subcategory, r.incident_description),
+    },
+    areas: {
+      type: 'socrata-geojson',
+      url: 'https://data.sf.gov/resource/j2bu-swwd.geojson',
+      keyProp: 'nhood',
+      tolerance: 0.0002,
+    },
+    normalizeKey: (k) => String(k).trim().toUpperCase(),
+    displayName: (e) => String(e.rawName).trim().replace(/\s*\/\s*/g, ' / '),
+    notes: [
+      'Counts use the date the incident occurred. Supplemental reports, shoplifting and domestic battery are excluded.',
+    ],
+  },
+  {
+    id: 'dc',
+    name: 'Washington, DC',
+    state: 'DC',
+    agency: 'Metropolitan Police Department (MPD)',
+    datasetUrl: 'https://opendata.dc.gov/datasets/crime-incidents-in-2026',
+    areaUnit: 'Neighborhood cluster',
+    // MPD publishes serious ("Part I") offenses only: no separate pickpocketing category.
+    categories: CATEGORIES.filter((c) => c !== 'pickpocket'),
+    source: {
+      type: 'arcgis',
+      yearLayers: { service: 'https://maps2.dcgis.dc.gov/dcgis/rest/services/FEEDS/MPD/MapServer', pattern: /^Crime Incidents - (\d{4})$/ },
+      dateField: 'REPORT_DAT',
+      groupFields: ['NEIGHBORHOOD_CLUSTER', 'OFFENSE'],
+      areaOf: (r) => r.NEIGHBORHOOD_CLUSTER,
+      categoryOf: (r) => dcCategory(r.OFFENSE),
+    },
+    areas: {
+      type: 'arcgis',
+      layerUrl: 'https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_DATA/Administrative_Other_Boundaries/MapServer/17',
+      keyProp: 'NAME',
+      nameProp: 'NBH_NAMES',
+      tolerance: 0.0003,
+    },
+    normalizeKey: (k) => String(parseInt(String(k).replace(/\D+/g, ''), 10) || ''),
+    displayName: (e) => DC_NAMES[e.key] || dcNames(e.rawName).slice(0, 2).join(' / '),
+    subtitle: (e) => {
+      const rest = dcNames(e.rawName).slice(2);
+      return rest.length ? `Also ${rest.join(', ')}` : `Neighborhood cluster ${e.key}`;
+    },
+    notes: [
+      'MPD publishes serious offenses only: pickpocketing is counted as Other theft, and Assault covers assault with a dangerous weapon.',
+      'Counts use the date the incident was reported.',
+    ],
+  },
+  {
+    id: 'boston',
+    name: 'Boston',
+    state: 'MA',
+    agency: 'Boston Police Department',
+    datasetUrl: 'https://data.boston.gov/dataset/crime-incident-reports-august-2015-to-date-source-new-system',
+    areaUnit: 'BPD district',
+    source: {
+      type: 'ckan',
+      api: 'https://data.boston.gov/api/3/action',
+      packageId: 'crime-incident-reports-august-2015-to-date-source-new-system',
+      dateField: 'OCCURRED_ON_DATE',
+      groupFields: ['DISTRICT', 'OFFENSE_DESCRIPTION'],
+      areaOf: (r) => r.DISTRICT,
+      categoryOf: (r) => bostonCategory(r.OFFENSE_DESCRIPTION),
+    },
+    areas: {
+      type: 'arcgis',
+      layerUrl: 'https://gis.boston.gov/arcgis/rest/services/PublicSafety/OpenData/MapServer/5',
+      keyProp: 'DISTRICT',
+      tolerance: 0.0003,
+    },
+    normalizeKey: (k) => String(k).trim().toUpperCase(),
+    displayName: (e) => BOSTON_DISTRICTS[e.key] || `District ${e.key}`,
+    subtitle: (e) => `BPD district ${e.key}`,
+    notes: ['Counts use the date the incident occurred. One incident can include several offenses.', 'Shoplifting is excluded.'],
+  },
+  {
+    id: 'sandiego',
+    name: 'San Diego',
+    state: 'CA',
+    agency: 'San Diego Police Department (SDPD)',
+    datasetUrl: 'https://data.sandiego.gov/datasets/police-nibrs/',
+    areaUnit: 'SDPD neighborhood',
+    source: {
+      type: 'arcgis',
+      layerUrl: 'https://webmaps.sandiego.gov/arcgis/rest/services/SDPD/SDPD_NIBRS_Crime_Offenses_Geo/MapServer/0',
+      dateField: 'OCCURED_ON',
+      where: `IBR_OFFENSE IN (${NIBRS_COUNTED.map((c) => `'${c}'`).join(',')})`,
+      groupFields: ['NEIGHBORHOOD', 'IBR_OFFENSE'],
+      areaOf: (r) => r.NEIGHBORHOOD,
+      categoryOf: (r) => nibrsCategory(r.IBR_OFFENSE),
+    },
+    areas: {
+      type: 'arcgis',
+      layerUrl: 'https://webmaps.sandiego.gov/arcgis/rest/services/Hosted/LAW_SDPD_BEATS/FeatureServer/0',
+      keyProp: 'name',
+      tolerance: 0.0003,
+    },
+    keyAliases: { 'Kearney Mesa': 'Kearny Mesa', 'Mission Bay Park': 'Mission Bay' },
+    skipKeys: ['SANDIEGO'],
+    normalizeKey: (k) => String(k).toUpperCase().replace(/[^A-Z0-9]/g, ''),
+    displayName: (e) => sdName(e.rawName),
+    notes: ['Counts use the date the offense occurred (NIBRS offenses). Domestic incidents are not flagged in this data.'],
+  },
+  {
+    id: 'austin',
+    name: 'Austin',
+    state: 'TX',
+    agency: 'Austin Police Department (APD)',
+    datasetUrl: 'https://data.austintexas.gov/Public-Safety/Crime-Reports/fdj4-gpfu',
+    areaUnit: 'Neighborhood reporting area',
+    source: {
+      type: 'socrata',
+      bases: ['https://data.austintexas.gov/resource/fdj4-gpfu.json'],
+      dateField: 'occ_date',
+      groupFields: ['census_block_group', 'crime_type', 'family_violence'],
+      areaOf: (r) => r.census_block_group,
+      categoryOf: (r) => austinCategory(r.crime_type, r.family_violence),
+    },
+    // Incidents carry a census block group; each block group is assigned to the neighborhood its center falls in.
+    keyPoints: {
+      url: 'https://data.austintexas.gov/resource/dwa9-qvcr.json?$select=blkgpnm,intptlat,intptlon&$limit=5000',
+      keyField: 'blkgpnm',
+      latField: 'intptlat',
+      lngField: 'intptlon',
+      label: 'census block groups',
+    },
+    areas: {
+      type: 'socrata-geojson',
+      url: 'https://data.austintexas.gov/resource/a7ap-j2yt.geojson',
+      keyProp: 'neighname',
+      tolerance: 0.0003,
+    },
+    normalizeKey: (k) => String(k).trim().toUpperCase(),
+    displayName: (e) => austinName(e.rawName),
+    notes: [
+      'APD lists only the most serious offense of each incident and updates the data weekly.',
+      'Counts use the date the incident occurred. Family-violence incidents and shoplifting are excluded.',
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------
 // Build one city
 // ---------------------------------------------------------------------------
+
+// Maps the source's small units (key → representative point) to the area that contains the point.
+async function keyPointRemap(city, areaEntries, ctx) {
+  const kp = city.keyPoints;
+  const rows = await fetchJson(kp.url, { headers: socrataHeaders(ctx), log: ctx.log });
+  const boxes = areaEntries.map((e) => bboxOf([e.polys]));
+  const remap = new Map();
+  let outside = 0;
+  for (const r of rows) {
+    const lng = Number(r[kp.lngField]);
+    const lat = Number(r[kp.latField]);
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) continue;
+    const hit = areaEntries.find(
+      (e, i) => lng >= boxes[i][0] && lng <= boxes[i][2] && lat >= boxes[i][1] && lat <= boxes[i][3] && pointInPolygons([lng, lat], e.polys)
+    );
+    if (hit) remap.set(city.normalizeKey(r[kp.keyField]), hit.key);
+    else outside++;
+  }
+  ctx.log(`${remap.size} ${kp.label || 'units'} mapped to areas (${outside} outside)`);
+  if (!remap.size) throw new Error('No source units fall inside the areas');
+  return remap;
+}
 
 export async function buildCity(city, ctx = {}) {
   ctx = { log: () => {}, now: new Date(), ...ctx };
@@ -649,6 +1070,8 @@ export async function buildCity(city, ctx = {}) {
   const areaEntries = await loadAreas(city, ctx);
   const labels = city.labeler ? await city.labeler(areaEntries, ctx) : new Map();
   log(`${areaEntries.length} areas`);
+  // Sources that report small units (e.g. census block groups) are rolled up into the areas by location.
+  const remap = city.keyPoints ? await keyPointRemap(city, areaEntries, ctx) : null;
 
   // 3) Counts per bucket.
   const zero = () => Object.fromEntries(CATEGORIES.map((c) => [c, new Array(BUCKETS).fill(0)]));
@@ -664,7 +1087,8 @@ export async function buildCity(city, ctx = {}) {
       if (raw !== undefined && raw !== null && city.keyAliases && city.keyAliases[String(raw).trim()]) {
         raw = city.keyAliases[String(raw).trim()];
       }
-      const key = raw === undefined || raw === null || raw === '' ? null : city.normalizeKey(raw);
+      let key = raw === undefined || raw === null || raw === '' ? null : city.normalizeKey(raw);
+      if (remap && key !== null) key = remap.get(key) ?? null;
       const target = key !== null && counts.has(key) ? counts.get(key) : null;
       if (target) target[cat][b] += r.n;
       else {
@@ -715,7 +1139,8 @@ export async function buildCity(city, ctx = {}) {
     latestRecord: iso(maxDate),
     window: { start: iso(start), end: iso(new Date(end.getTime() - DAY)) },
     buckets: buckets.map((b) => ({ start: iso(b.start), end: iso(new Date(b.end.getTime() - DAY)) })),
-    categories: CATEGORIES,
+    // Categories the source can tell apart (e.g. DC doesn't publish pickpocketing separately).
+    categories: city.categories || CATEGORIES,
     bbox: bboxOf(simplifiedAll),
     totals: { all: total, byCat, unassigned: unassignedTotal },
     areas: areasOut,

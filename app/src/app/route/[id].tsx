@@ -73,6 +73,11 @@ const CITY_ALIASES: Record<string, string[]> = {
   chicago: ['chicago'],
   miami: ['miami'],
   seattle: ['seattle'],
+  sf: ['san francisco'],
+  dc: ['washington dc', 'washington d.c.', 'washington, dc'],
+  boston: ['boston'],
+  sandiego: ['san diego', 'la jolla'],
+  austin: ['austin'],
 };
 const OSM_FIX = 'https://www.openstreetmap.org/fixthemap';
 
@@ -358,7 +363,7 @@ export default function RouteScreen() {
       ? CITY_LIST.find(
           (c) =>
             c.id !== data.id &&
-            [c.name, c.id, ...(CITY_ALIASES[c.id] ?? [])].some((name) => {
+            [c.id, ...(CITY_ALIASES[c.id] ?? [c.name])].some((name) => {
               const n = name.toLowerCase();
               return n.startsWith(q) || q === n || q.startsWith(`${n} `);
             })
@@ -656,7 +661,7 @@ export default function RouteScreen() {
               </View>
             </View>
             <Text style={[styles.label, styles.padded]}>Safety based on</Text>
-            <CategoryChips value={filter} onChange={setFilter} />
+            <CategoryChips value={filter} onChange={setFilter} available={data.categories} />
 
             <Pressable
               style={[styles.findButton, !canFind && styles.findButtonDisabled]}
