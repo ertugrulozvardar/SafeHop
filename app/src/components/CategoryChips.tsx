@@ -2,6 +2,7 @@ import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { CATEGORY_META, FILTERS } from '../data/categories';
 import type { CategoryFilter, CategoryId } from '../data/types';
 import { colors, radius } from '../theme';
+import { Icon } from './Icon';
 
 interface Props {
   value: CategoryFilter;
@@ -30,6 +31,7 @@ export function CategoryChips({ value, onChange, available }: Props) {
             accessibilityState={{ selected }}
             accessibilityLabel={`Show ${CATEGORY_META[f].label}`}
           >
+            <Icon name={CATEGORY_META[f].icon} size={15} color={selected ? '#fff' : colors.brand} />
             <Text style={[styles.text, selected && styles.textSelected]}>{CATEGORY_META[f].short}</Text>
           </Pressable>
         );
@@ -41,7 +43,10 @@ export function CategoryChips({ value, onChange, available }: Props) {
 const styles = StyleSheet.create({
   row: { paddingHorizontal: 12, gap: 8 },
   chip: {
-    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: radius.pill,
     backgroundColor: colors.card,

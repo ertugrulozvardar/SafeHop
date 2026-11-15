@@ -3,6 +3,7 @@ import { CATEGORY_META } from '../data/categories';
 import type { CategoryFilter, CategoryId, DateRange } from '../data/types';
 import { formatDate, formatNumber } from '../lib/stats';
 import { colors } from '../theme';
+import { Icon } from './Icon';
 
 /** Six vertical bars, one per 30-day period (oldest → newest). */
 export function TrendBars({ values, buckets, color }: { values: number[]; buckets: DateRange[]; color: string }) {
@@ -47,7 +48,10 @@ export function CategoryBars({
         return (
           <Pressable key={id} onPress={() => onSelect(id)} accessibilityRole="button" accessibilityLabel={`${CATEGORY_META[id].label}: ${value}`}>
             <View style={styles.catHeader}>
-              <Text style={[styles.catLabel, active && styles.catLabelActive]}>{CATEGORY_META[id].label}</Text>
+              <View style={styles.catTitle}>
+                <Icon name={CATEGORY_META[id].icon} size={14} color={active ? colors.brand : colors.textMuted} />
+                <Text style={[styles.catLabel, active && styles.catLabelActive]}>{CATEGORY_META[id].label}</Text>
+              </View>
               <Text style={styles.catValue}>{formatNumber(value)}</Text>
             </View>
             <View style={styles.catTrack}>
@@ -74,6 +78,7 @@ const styles = StyleSheet.create({
   trendAxis: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   axisText: { fontSize: 11, color: colors.textMuted },
   catHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  catTitle: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   catLabel: { fontSize: 14, color: colors.text },
   catLabelActive: { fontWeight: '700' },
   catValue: { fontSize: 14, color: colors.textMuted, fontVariant: ['tabular-nums'] },

@@ -1,5 +1,5 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import MapView, { Polygon } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,8 +7,10 @@ import { AreaSheet } from '../../components/AreaSheet';
 import { CategoryChips } from '../../components/CategoryChips';
 import { ChoiceChips } from '../../components/ChoiceChips';
 import { CostSheet } from '../../components/CostSheet';
+import type { IconName } from '../../components/Icon';
 import { Legend } from '../../components/Legend';
 import { ModeTabs } from '../../components/ModeTabs';
+import { GOOD_VALUE_COLOR, PriceMarker } from '../../components/PriceMarker';
 import { type DataOrigin, loadCity, loadCosts } from '../../data/api';
 import { CATEGORY_META } from '../../data/categories';
 import type { AreaCollection, CategoryFilter, CityData, CostData } from '../../data/types';
@@ -24,6 +26,7 @@ import {
   type StayKind,
   stayMetrics,
 } from '../../lib/costs';
+import { type LabelCandidate, labelPoints, labelWidth, type MapRegion, placeLabels } from '../../lib/labels';
 import { regionForBbox, toShapes } from '../../lib/shapes';
 import { computeMetrics, formatRange } from '../../lib/stats';
 import { colors, levelColors, priceColors, radius } from '../../theme';
@@ -34,12 +37,15 @@ type State =
   | { status: 'ready'; data: CityData; areas: AreaCollection; origin: DataOrigin };
 
 type Tab = 'safety' | 'stay' | 'rent';
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'safety', label: 'Safety' },
-  { key: 'stay', label: 'Stay' },
-  { key: 'rent', label: 'Rent' },
-];
+const TABS = [
+  { key: 'safety', label: 'Safety', icon: 'shield-checkmark-outline', iconSelected: 'shield-checkmark' },
+  { key: 'stay', label: 'Stay', icon: 'bed-outline', iconSelected: 'bed' },
+  { key: 'rent', label: 'Rent', icon: 'home-outline', iconSelected: 'home' },
+] as const satisfies { key: Tab; label: string; icon: IconName; iconSelected: IconName }[];
 const FADED = 'rgba(154,164,174,0.08)';
+
+/** Until the map reports what it shows, assume the whole city. */
+const region0 = (bbox: CityData['bbox']): MapRegion => regionForBbox(bbox);
 
 /** Legend labels for the three price groups, rounded to readable steps. */
 function priceLegend(m: PriceMetrics, step: number, withNoData: boolean) {
@@ -68,6 +74,11 @@ export default function CityScreen() {
   // Height of the legend card, so the map's logo/"Legal" link (Apple Maps / Google)
   // is laid out above it instead of being covered — required by the map providers.
   const [legendHeight, setLegendHeight] = useState(90);
+  // What the map currently shows, to decide which price labels fit (more appear as you zoom in).
+  const mapRef = useRef<MapView>(null);
+  const [region, setRegion] = useState<MapRegion | null>(null);
+  const [mapSize, setMapSize] = useState({ width: 0, height: 0 });
+  const [topHeight, setTopHeight] = useState(110);
 
   const [attempt, setAttempt] = useState(0);
 
@@ -97,6 +108,7 @@ export default function CityScreen() {
     () => (tab === 'stay' ? stayMetrics(costData, stayKind) : tab === 'rent' ? rentMetrics(costData, rentSize) : null),
     [tab, costData, stayKind, rentSize]
   );
+  const points = useMemo(() => (state.status === 'ready' ? labelPoints(state.areas) : new Map()), [state]);
 
   if (state.status === 'loading') {
     return (
@@ -122,7 +134,7 @@ export default function CityScreen() {
   }
 
   const { data } = state;
-  const region = regionForBbox(data.bbox);
+  const initialRegion = regionForBbox(data.bbox);
   const selectedArea = selected ? data.areas.find((a) => a.key === selected) : undefined;
   const selectedMetric = selected && metrics ? metrics.byKey.get(selected) : undefined;
 
@@ -135,6 +147,35 @@ export default function CityScreen() {
   else if (tab === 'stay' && costData.stay && costData.stay.longStayShare >= 0.3)
     banner = `About ${Math.round(costData.stay.longStayShare * 100)}% of the listings here require stays of 30 nights or more, so prices partly reflect month-long stays.`;
   else if (tab === 'rent' && !costData.rent) banner = 'Rent data isn’t available yet.';
+
+  // ★ Good value: lower reported crime (all categories) and not in the priciest third of the city.
+  const isGoodValue = (key: string) => {
+    const level = priceMetrics?.byKey.get(key)?.level;
+    return crimeAll?.byKey.get(key)?.level === 'lower' && (level === 'cheaper' || level === 'mid');
+  };
+  const areaSize = new Map(data.areas.map((a) => [a.key, a.areaKm2]));
+  const labels: (LabelCandidate & { text: string; goodValue: boolean })[] = [];
+  if (tab !== 'safety' && priceMetrics) {
+    for (const [key, m] of priceMetrics.byKey) {
+      const pt = points.get(key);
+      if (!pt || (saferOnly && crimeAll?.byKey.get(key)?.level === 'higher')) continue;
+      const text = formatUsd(m.value);
+      const goodValue = isGoodValue(key);
+      labels.push({
+        key,
+        ...pt,
+        text,
+        goodValue,
+        width: labelWidth(text, goodValue),
+        priority: (key === selected ? 1e6 : 0) + (goodValue ? 1e4 : 0) + (areaSize.get(key) ?? 0),
+      });
+    }
+  }
+  const shownLabels = placeLabels(labels, region ?? region0(data.bbox), mapSize, {
+    top: topHeight + 4,
+    bottom: legendHeight + insets.bottom + 16,
+  });
+  const anyGoodValue = labels.some((l) => l.goodValue);
 
   const fillFor = (key: string) => {
     if (tab === 'safety') return levelColors[metrics?.byKey.get(key)?.level ?? 'none'].fill;
@@ -149,16 +190,18 @@ export default function CityScreen() {
   );
   if (tab !== 'safety' && priceMetrics && costData) {
     const faded = saferOnly ? ' Faded = higher-crime areas.' : '';
+    const star = anyGoodValue ? [{ color: GOOD_VALUE_COLOR, icon: 'star' as const, label: 'Good value' }] : [];
+    const starNote = anyGoodValue ? ' ★ = lower crime, not among the priciest.' : '';
     legend =
       tab === 'stay' && costData.stay ? (
         <Legend
-          items={priceLegend(priceMetrics, 10, priceMetrics.byKey.size < data.areas.length)}
-          caption={`Median nightly price, ${STAY_LABEL[stayKind].toLowerCase()} · Airbnb listings collected ${formatMonth(costData.stay.snapshot)} (Inside Airbnb).${faded} Tap an area.`}
+          items={[...priceLegend(priceMetrics, 10, priceMetrics.byKey.size < data.areas.length), ...star]}
+          caption={`Median nightly price, ${STAY_LABEL[stayKind].toLowerCase()} · Airbnb listings collected ${formatMonth(costData.stay.snapshot)} (Inside Airbnb).${faded}${starNote} Zoom in for more prices.`}
         />
       ) : costData.rent ? (
         <Legend
-          items={priceLegend(priceMetrics, 50, false)}
-          caption={`Typical monthly rent, ${RENT_LABEL[rentSize].toLowerCase()} · HUD FY${costData.rent.fy}, estimated from ZIP codes.${faded} Tap an area.`}
+          items={[...priceLegend(priceMetrics, 50, false), ...star]}
+          caption={`Typical monthly rent, ${RENT_LABEL[rentSize].toLowerCase()} · HUD FY${costData.rent.fy}, estimated from ZIP codes.${faded}${starNote} Zoom in for more prices.`}
         />
       ) : (
         legend
@@ -170,6 +213,7 @@ export default function CityScreen() {
     label: 'Lower-crime areas only',
     selected: saferOnly,
     toggle: true,
+    icon: 'shield-checkmark-outline' as const,
     onPress: () => setSaferOnly((v) => !v),
   };
 
@@ -187,7 +231,24 @@ export default function CityScreen() {
       />
       <MapView
         style={styles.flex}
-        initialRegion={region}
+        ref={mapRef}
+        initialRegion={initialRegion}
+        onLayout={(e) => setMapSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}
+        onRegionChangeComplete={(r) => setRegion(r)}
+        onMapReady={() => {
+          // The map fits the requested region to its own shape; read back what it really shows.
+          mapRef.current
+            ?.getMapBoundaries()
+            .then(({ northEast: ne, southWest: sw }) =>
+              setRegion({
+                latitude: (ne.latitude + sw.latitude) / 2,
+                longitude: (ne.longitude + sw.longitude) / 2,
+                latitudeDelta: ne.latitude - sw.latitude,
+                longitudeDelta: ne.longitude - sw.longitude,
+              })
+            )
+            .catch(() => {});
+        }}
         mapPadding={{ top: 0, right: 0, bottom: legendHeight + insets.bottom + 16, left: 0 }}
         toolbarEnabled={false}
         pitchEnabled={false}
@@ -209,9 +270,29 @@ export default function CityScreen() {
             />
           ));
         })}
+        {labels
+          .filter((l) => shownLabels.has(l.key))
+          .map((l) => (
+            <PriceMarker
+              key={`${tab}-${l.key}-${l.text}-${l.goodValue ? 1 : 0}-${l.key === selected ? 1 : 0}`}
+              coordinate={{ latitude: l.latitude, longitude: l.longitude }}
+              text={l.text}
+              level={priceMetrics?.byKey.get(l.key)?.level ?? 'none'}
+              goodValue={l.goodValue}
+              selected={l.key === selected}
+              onPress={() => setSelected(l.key)}
+            />
+          ))}
       </MapView>
 
-      <View style={styles.topOverlay} pointerEvents="box-none">
+      <View
+        style={styles.topOverlay}
+        pointerEvents="box-none"
+        onLayout={(e) => {
+          const h = Math.round(e.nativeEvent.layout.y + e.nativeEvent.layout.height);
+          if (Math.abs(h - topHeight) > 2) setTopHeight(h);
+        }}
+      >
         <ModeTabs value={tab} options={TABS} onChange={setTab} />
         {tab === 'safety' ? (
           <CategoryChips value={filter} onChange={setFilter} available={data.categories} />
@@ -221,6 +302,7 @@ export default function CityScreen() {
               ...(['entire', 'room'] as StayKind[]).map((k) => ({
                 key: k,
                 label: STAY_LABEL[k],
+                icon: k === 'entire' ? ('home-outline' as const) : ('bed-outline' as const),
                 selected: stayKind === k,
                 onPress: () => setStayKind(k),
               })),
@@ -264,6 +346,7 @@ export default function CityScreen() {
           rentSize={rentSize}
           price={priceMetrics?.byKey.get(selectedArea.key)}
           crime={crimeAll?.byKey.get(selectedArea.key)}
+          goodValue={isGoodValue(selectedArea.key)}
           onShowCrime={() => setTab('safety')}
           onClose={() => setSelected(null)}
           bottomInset={insets.bottom}

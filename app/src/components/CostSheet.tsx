@@ -3,6 +3,8 @@ import type { AreaStats, CityData, CostData } from '../data/types';
 import { formatMonth, formatUsd, type PriceMetric, RENT_LABEL, RENT_SHORT, type RentSize, STAY_LABEL, type StayKind } from '../lib/costs';
 import type { AreaMetric } from '../lib/stats';
 import { colors, levelColors, priceColors, radius } from '../theme';
+import { Icon } from './Icon';
+import { GOOD_VALUE_COLOR } from './PriceMarker';
 
 interface Props {
   city: CityData;
@@ -13,6 +15,7 @@ interface Props {
   rentSize: RentSize;
   price: PriceMetric | undefined;
   crime: AreaMetric | undefined; // all categories
+  goodValue: boolean;
   onShowCrime: () => void;
   onClose: () => void;
   bottomInset: number;
@@ -21,7 +24,7 @@ interface Props {
 const PRICE_TEXT = { cheaper: 'cheaper than most of', mid: 'mid-range for', pricier: 'pricier than most of', none: '' } as const;
 const CRIME_TEXT = { lower: 'Lower reported crime than most of', moderate: 'Moderate reported crime for', higher: 'Higher reported crime than most of', none: 'No crime reports in' } as const;
 
-export function CostSheet({ city, area, mode, costs, stayKind, rentSize, price, crime, onShowCrime, onClose, bottomInset }: Props) {
+export function CostSheet({ city, area, mode, costs, stayKind, rentSize, price, crime, goodValue, onShowCrime, onClose, bottomInset }: Props) {
   const stay = costs.stay?.areas[area.key];
   const rent = costs.rent?.areas[area.key];
   const other: StayKind = stayKind === 'entire' ? 'room' : 'entire';
@@ -47,14 +50,18 @@ export function CostSheet({ city, area, mode, costs, stayKind, rentSize, price, 
         {/* The headline: how safe + how expensive */}
         <View style={styles.summary}>
           <View style={styles.summaryRow}>
-            <View style={[styles.dot, { backgroundColor: levelColors[crimeLevel].solid }]} />
+            <View style={styles.iconSlot}>
+              <Icon name="shield-checkmark" size={16} color={levelColors[crimeLevel].solid} />
+            </View>
             <Text style={styles.summaryText}>
               <Text style={styles.bold}>Safety · </Text>
               {CRIME_TEXT[crimeLevel]} {city.name}
             </Text>
           </View>
           <View style={styles.summaryRow}>
-            <View style={[styles.dot, { backgroundColor: priceColors[price?.level ?? 'none'].solid }]} />
+            <View style={styles.iconSlot}>
+              <Icon name={mode === 'stay' ? 'bed' : 'home'} size={16} color={priceColors[price?.level ?? 'none'].solid} />
+            </View>
             <Text style={styles.summaryText}>
               <Text style={styles.bold}>Cost · </Text>
               {price
@@ -64,6 +71,17 @@ export function CostSheet({ city, area, mode, costs, stayKind, rentSize, price, 
                   : 'No rent data for this area'}
             </Text>
           </View>
+          {goodValue && (
+            <View style={styles.summaryRow}>
+              <View style={styles.iconSlot}>
+                <Icon name="star" size={16} color={GOOD_VALUE_COLOR} />
+              </View>
+              <Text style={styles.summaryText}>
+                <Text style={styles.bold}>Good value · </Text>
+                Lower reported crime, and not among the priciest areas of {city.name}
+              </Text>
+            </View>
+          )}
         </View>
 
         {mode === 'stay' ? (
@@ -154,7 +172,7 @@ const styles = StyleSheet.create({
   scroll: { marginTop: 12, flexShrink: 1 },
   summary: { backgroundColor: colors.background, borderRadius: radius.md, padding: 12, gap: 8 },
   summaryRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  dot: { width: 12, height: 12, borderRadius: 6, marginTop: 3 },
+  iconSlot: { width: 18, alignItems: 'center', marginTop: 1 },
   summaryText: { flex: 1, fontSize: 14, lineHeight: 19, color: colors.text },
   bold: { fontWeight: '700' },
   bigRow: { flexDirection: 'row', alignItems: 'baseline' },

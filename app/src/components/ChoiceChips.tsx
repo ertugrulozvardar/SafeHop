@@ -1,5 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { colors, radius } from '../theme';
+import { Icon, type IconName } from './Icon';
 
 export interface Choice {
   key: string;
@@ -8,6 +9,7 @@ export interface Choice {
   onPress: () => void;
   /** Toggle chips (on/off filters) get a check mark when on. */
   toggle?: boolean;
+  icon?: IconName;
 }
 
 /** A horizontal row of chips, styled like the crime category chips. */
@@ -22,8 +24,15 @@ export function ChoiceChips({ items }: { items: Choice[] }) {
           accessibilityRole={c.toggle ? 'switch' : 'button'}
           accessibilityState={c.toggle ? { checked: c.selected } : { selected: c.selected }}
         >
+          {c.icon && (
+            <Icon
+              name={c.toggle && c.selected ? 'checkmark-circle' : c.icon}
+              size={15}
+              color={c.selected ? (c.toggle ? '#14724A' : '#fff') : colors.brand}
+            />
+          )}
           <Text style={[styles.text, c.selected && (c.toggle ? styles.toggleText : styles.textSelected)]}>
-            {c.toggle && c.selected ? `✓ ${c.label}` : c.label}
+            {c.toggle && c.selected && !c.icon ? `✓ ${c.label}` : c.label}
           </Text>
         </Pressable>
       ))}
@@ -34,7 +43,10 @@ export function ChoiceChips({ items }: { items: Choice[] }) {
 const styles = StyleSheet.create({
   row: { paddingHorizontal: 12, gap: 8 },
   chip: {
-    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: radius.pill,
     backgroundColor: colors.card,

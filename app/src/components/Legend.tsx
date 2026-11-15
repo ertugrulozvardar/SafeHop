@@ -1,10 +1,11 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { colors, levelColors, radius } from '../theme';
+import { Icon, type IconName } from './Icon';
 
 interface Props {
   caption: string;
   /** Defaults to the crime levels (lower / moderate / higher). */
-  items?: { color: string; label: string }[];
+  items?: { color: string; label: string; icon?: IconName }[];
 }
 
 const CRIME_ITEMS = (['lower', 'moderate', 'higher'] as const).map((l) => ({ color: levelColors[l].solid, label: levelColors[l].label }));
@@ -15,7 +16,7 @@ export function Legend({ caption, items = CRIME_ITEMS }: Props) {
       <View style={styles.row}>
         {items.map((it) => (
           <View key={it.label} style={styles.item}>
-            <View style={[styles.swatch, { backgroundColor: it.color }]} />
+            {it.icon ? <Icon name={it.icon} size={14} color={it.color} /> : <View style={[styles.swatch, { backgroundColor: it.color }]} />}
             <Text style={styles.label}>{it.label}</Text>
           </View>
         ))}

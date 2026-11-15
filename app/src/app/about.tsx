@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { PRIVACY_URL } from '../config';
 import { CATEGORY_META, CATEGORY_ORDER } from '../data/categories';
+import { Icon } from '../components/Icon';
 import { colors, levelColors, radius } from '../theme';
 
 const SOURCES = [
@@ -53,7 +54,10 @@ export default function AboutScreen() {
       <Section title="Categories">
         {CATEGORY_ORDER.map((id) => (
           <View key={id} style={{ marginBottom: 10 }}>
-            <Text style={styles.bold}>{CATEGORY_META[id].label}</Text>
+            <View style={styles.catTitle}>
+              <Icon name={CATEGORY_META[id].icon} size={15} color={colors.brand} />
+              <Text style={styles.bold}>{CATEGORY_META[id].label}</Text>
+            </View>
             <Text style={styles.body}>{CATEGORY_META[id].description}</Text>
           </View>
         ))}
@@ -92,6 +96,10 @@ export default function AboutScreen() {
         <Bullet>
           Rent: HUD Small Area Fair Market Rents, the U.S. government’s yearly estimate of typical rents by ZIP code
           (studio to 3 bedrooms), averaged over the ZIP codes each area covers.
+        </Bullet>
+        <Bullet>
+          On the map, each area shows its price. A star (★) marks areas with lower reported crime that aren’t among the
+          priciest third of the city. Zoom in to see more prices.
         </Bullet>
         <Bullet>Prices are guides, not quotes: they change with season, events and the specific home.</Bullet>
         <Pressable onPress={() => Linking.openURL('https://insideairbnb.com/get-the-data/')} style={styles.sourceRow} accessibilityRole="link">
@@ -161,5 +169,6 @@ const styles = StyleSheet.create({
   levelRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
   swatch: { width: 16, height: 16, borderRadius: 4 },
   bulletRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  catTitle: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
   sourceRow: { paddingVertical: 8, borderTopWidth: 1, borderTopColor: colors.border },
 });
