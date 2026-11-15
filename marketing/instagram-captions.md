@@ -61,6 +61,35 @@ Yeni bir şehirde otele yürüyerek mi dönüyorsun? 🧭 SafeHop artık iki nok
 
 ---
 
+## Reel 5 – `reel-5-ten-cities.mp4` (post after version 1.3 is live)
+**Cover text:** SafeHop is now in 10 US cities
+
+**Caption (EN):**
+SafeHop is now in 10 US cities 🇺🇸
+New: San Francisco, Washington DC, Boston, San Diego and Austin join Chicago, LA, New York, Miami and Seattle.
+Crime maps from official police data, nightly stay prices, monthly rents and the safest route between two places, all in one app.
+Free on the App Store, link in bio.
+#ustravel #sanfrancisco #washingtondc #boston #sandiego #austin #traveltips #travelsafety
+
+**Caption (TR, isteğe bağlı):**
+SafeHop artık ABD'de 10 şehirde 🇺🇸 Yeni: San Francisco, Washington DC, Boston, San Diego ve Austin. Resmi polis verisiyle suç haritası, gecelik konaklama fiyatları, aylık kiralar ve en güvenli rota tek uygulamada. App Store'da ücretsiz, link bio'da.
+
+---
+
+## Reel 6 – `reel-6-safe-and-affordable.mp4` (post after version 1.3 is live)
+**Cover text:** Safe AND affordable?
+
+**Caption (EN):**
+Looking for a neighborhood that's safe AND affordable? 🏠
+SafeHop shows every area's nightly stay price or monthly rent right on the map, next to its reported crime level. ★ marks lower-crime areas that aren't among the priciest.
+10 US cities. Free on the App Store, link in bio.
+#apartmenthunting #movingtotheus #airbnbtips #traveltips #travelsafety #nyc #boston #washingtondc
+
+**Caption (TR, isteğe bağlı):**
+Hem güvenli hem uygun fiyatlı bir mahalle mi arıyorsun? 🏠 SafeHop her bölgenin gecelik konaklama fiyatını ya da aylık kirasını haritada, suç seviyesinin yanında gösteriyor. ★ işareti düşük suçlu ve en pahalılardan olmayan bölgeleri işaretliyor. 10 ABD şehri, App Store'da ücretsiz, link bio'da.
+
+---
+
 ### Posting tips
 - Pick the first frame (the question) as the cover.
 - Share each Reel to your Story too, with a **link sticker** to the App Store page.
